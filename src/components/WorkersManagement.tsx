@@ -15,8 +15,7 @@ import {
   Filter,
   MoreVertical,
   UserCheck,
-  UserX,
-  Eye
+  UserX
 } from 'lucide-react';
 
 const WorkersManagement: React.FC = () => {
