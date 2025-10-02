@@ -1,0 +1,150 @@
+/* Sidebar Styles */
+.sidebar {
+  width: 280px;
+  transition: width 0.3s ease, transform 0.3s ease;
+  z-index: 1040;
+  position: relative;
+}
+
+.sidebar-collapsed {
+  width: 80px;
+}
+
+.sidebar-item {
+  transition: background-color 0.2s ease;
+  border-radius: 8px;
+  margin: 2px 8px;
+}
+
+.sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+
+.sidebar-item.active {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+/* Dark theme sidebar styles */
+[data-theme="dark"] .sidebar:not(.bg-dark) {
+  background-color: #212529 !important;
+  color: white !important;
+  border-right: 1px solid #495057;
+}
+
+[data-theme="dark"] .sidebar:not(.bg-dark) .sidebar-item {
+  color: white !important;
+}
+
+[data-theme="dark"] .sidebar:not(.bg-dark) .sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Light theme sidebar styles */
+[data-theme="light"] .sidebar.bg-light {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+  border-right: 1px solid #dee2e6;
+}
+
+[data-theme="light"] .sidebar.bg-light .sidebar-item {
+  color: #212529 !important;
+}
+
+[data-theme="light"] .sidebar.bg-light .sidebar-item:hover {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .sidebar.bg-light .sidebar-item.active {
+  background-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Search Input */
+.search-input {
+  width: 250px;
+  border-radius: 20px;
+  border: 1px solid #e0e0e0;
+  padding: 8px 20px 8px 40px;
+}
+
+.search-input:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Custom text size */
+.text-xs {
+  font-size: 0.75rem;
+}
+
+/* Dashboard Cards Theme Support */
+[data-theme="dark"] .dashboard-card {
+  background-color: #212529 !important;
+  border-color: #495057 !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .card-header {
+  border-color: #495057 !important;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    transform: translateX(-100%);
+    z-index: 1050;
+  }
+
+  .sidebar.show {
+    transform: translateX(0);
+  }
+
+  .sidebar-collapsed {
+    width: 280px; /* On mobile, collapsed sidebar is still full width when shown */
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+  }
+
+  .sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .search-input {
+    width: 200px;
+  }
+}
+
+@media (max-width: 576px) {
+  .search-input {
+    width: 150px;
+  }
+  
+  .sidebar {
+    width: 260px;
+  }
+}
+
+/* Remove default Vite styles */
+#root {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
