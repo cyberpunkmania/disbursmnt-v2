@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../services/api';
+import { SessionManager } from '../utils/sessionManager';
 import type { User, LoginRequest } from '../types';
 
 interface AuthContextType {
@@ -46,7 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = localStorage.getItem('access_token');
+    const token = SessionManager.getAccessToken();
     if (token) {
       const decodedUser = decodeToken(token);
       setUser(decodedUser);
@@ -62,8 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (response.success) {
         const { access_token, refresh_token } = response.data;
-        localStorage.setItem('access_token', access_token);
-        localStorage.setItem('refresh_token', refresh_token);
+        SessionManager.setTokens(access_token, refresh_token);
         
         const decodedUser = decodeToken(access_token);
         console.log('Decoded user:', decodedUser);
@@ -80,9 +80,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    SessionManager.clearTokens();
     setUser(null);
+    // Remove any existing session expired alerts
+    const existingAlert = document.getElementById('session-expired-alert');
+    if (existingAlert) {
+      existingAlert.remove();
+    }
   };
 
   const value: AuthContextType = {

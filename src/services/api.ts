@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
+import { SessionManager } from '../utils/sessionManager';
 import type {
   ApiResponse,
   LoginRequest,
@@ -9,6 +10,8 @@ import type {
   UpdatePositionRequest,
   Worker,
   CreateWorkerRequest,
+  WorkerSearchParams,
+  PaginatedResponse,
   PayPeriod,
   CreatePayPeriodRequest,
   DisbursementBatch,
@@ -29,22 +32,22 @@ const api = axios.create({
 
 // Add request interceptor to include auth token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = SessionManager.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Add response interceptor to handle token refresh
+// Add response interceptor to handle token refresh and session expiry
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Clear tokens and redirect to login
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+    const status = error.response?.status;
+    
+    if (status === 401 || status === 403) {
+      // Handle session expiry using SessionManager
+      SessionManager.handleSessionExpiry();
     }
     return Promise.reject(error);
   }
@@ -99,6 +102,30 @@ export const workersApi = {
     return response.data;
   },
   
+  search: async (params: WorkerSearchParams = {}): Promise<ApiResponse<PaginatedResponse<Worker>>> => {
+    const searchParams = new URLSearchParams();
+    
+    if (params.status) searchParams.append('status', params.status);
+    if (params.payFrequency) searchParams.append('payFrequency', params.payFrequency);
+    if (params.payable !== undefined) searchParams.append('payable', params.payable.toString());
+    if (params.team) searchParams.append('team', params.team);
+    if (params.minRate !== undefined) searchParams.append('minRate', params.minRate.toString());
+    if (params.maxRate !== undefined) searchParams.append('maxRate', params.maxRate.toString());
+    if (params.start) searchParams.append('start', params.start);
+    if (params.end) searchParams.append('end', params.end);
+    if (params.keyword) searchParams.append('keyword', params.keyword);
+    if (params.page !== undefined) searchParams.append('page', params.page.toString());
+    if (params.size !== undefined) searchParams.append('size', params.size.toString());
+    if (params.sort && params.sort.length > 0) {
+      params.sort.forEach((sortParam: string) => searchParams.append('sort', sortParam));
+    }
+    
+    const response: AxiosResponse<ApiResponse<PaginatedResponse<Worker>>> = await api.get(
+      `/api/v1/admin/workers/search?${searchParams.toString()}`
+    );
+    return response.data;
+  },
+  
   get: async (uuid: string): Promise<ApiResponse<Worker>> => {
     const response: AxiosResponse<ApiResponse<Worker>> = await api.get(`/api/v1/admin/workers/${uuid}`);
     return response.data;
@@ -119,7 +146,7 @@ export const workersApi = {
       `/api/v1/admin/workers/${uuid}/payable?payable=${payable}`
     );
     return response.data;
-  },
+  }
 };
 
 export const payrollApi = {

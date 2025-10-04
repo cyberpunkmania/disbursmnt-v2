@@ -70,10 +70,57 @@ export interface CreateWorkerRequest {
   email: string;
   payFrequency: 'DAILY' | 'WEEKLY' | 'MONTHLY';
   rate: number;
+  status: 'ACTIVE' | 'INACTIVE';
   nationalId?: string;
   kraPin?: string;
-  team?: string;
+  team: string;
   positionUuid: string;
+}
+
+// Worker Search Parameters
+export interface WorkerSearchParams {
+  status?: 'ACTIVE' | 'INACTIVE';
+  payFrequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  payable?: boolean;
+  team?: string;
+  minRate?: number;
+  maxRate?: number;
+  start?: string;
+  end?: string;
+  keyword?: string;
+  page?: number;
+  size?: number;
+  sort?: string[];
+}
+
+// Paginated Response
+export interface PaginatedResponse<T> {
+  content: T[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: {
+      sorted: boolean;
+      unsorted: boolean;
+      empty: boolean;
+    };
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+  };
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  first: boolean;
+  numberOfElements: number;
+  size: number;
+  number: number;
+  sort: {
+    sorted: boolean;
+    unsorted: boolean;
+    empty: boolean;
+  };
+  empty: boolean;
 }
 
 // Pay Period Types

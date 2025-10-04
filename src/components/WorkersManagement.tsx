@@ -1,36 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { workersApi, positionsApi } from '../services/api';
-import type { Worker, Position, CreateWorkerRequest } from '../types';
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Users, 
-  Phone, 
-  Mail, 
+import type { Worker, Position, CreateWorkerRequest, WorkerSearchParams, PaginatedResponse } from '../types';
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Users,
+  Phone,
+  Mail,
   DollarSign,
   MapPin,
-  Filter,
   MoreVertical,
   UserCheck,
-  UserX
+  UserX,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 
+interface PaginationState {
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 const WorkersManagement: React.FC = () => {
-  const { isDarkMode } = useTheme();
+  const { theme } = useTheme();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPosition, setSelectedPosition] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Search and filter states
+  const [searchParams, setSearchParams] = useState<WorkerSearchParams>({
+    page: 0,
+    size: 20,
+    keyword: '',
+    status: undefined,
+    payFrequency: undefined,
+    payable: undefined,
+    team: '',
+    minRate: undefined,
+    maxRate: undefined
+  });
+
+  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
+  const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationState>({
+    page: 0,
+    size: 20,
+    totalElements: 0,
+    totalPages: 0
+  });
 
   // Form state
   const [formData, setFormData] = useState<CreateWorkerRequest>({
@@ -39,6 +74,7 @@ const WorkersManagement: React.FC = () => {
     email: '',
     payFrequency: 'WEEKLY',
     rate: 0,
+    status: 'ACTIVE',
     nationalId: '',
     kraPin: '',
     team: '',
@@ -46,46 +82,97 @@ const WorkersManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
+    loadPositions();
+    searchWorkers();
   }, []);
 
-  const loadData = async () => {
+  useEffect(() => {
+    searchWorkers();
+  }, [searchParams.page, searchParams.size]);
+
+  const showSuccessMessage = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  const loadPositions = async () => {
+    try {
+      const response = await positionsApi.list(true);
+      if (response.success) {
+        setPositions(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading positions:', error);
+    }
+  };
+
+  const searchWorkers = async () => {
     try {
       setLoading(true);
-      const [workersResponse, positionsResponse] = await Promise.all([
-        workersApi.list(),
-        positionsApi.list(true)
-      ]);
+      setError(null);
 
-      if (workersResponse.success) {
-        setWorkers(workersResponse.data);
+      const response = await workersApi.search(searchParams);
+
+      if (response.success) {
+        const paginatedData = response.data as PaginatedResponse<Worker>;
+        setWorkers(paginatedData.content);
+        setPagination({
+          page: paginatedData.number,
+          size: paginatedData.size,
+          totalElements: paginatedData.totalElements,
+          totalPages: paginatedData.totalPages
+        });
+      } else {
+        setError(response.message || 'Failed to load workers');
+        setWorkers([]);
       }
-      if (positionsResponse.success) {
-        setPositions(positionsResponse.data);
-      }
-    } catch (err) {
-      setError('Failed to load data. Please try again.');
-      console.error('Error loading data:', err);
+    } catch (error) {
+      console.error('Error searching workers:', error);
+      setError('Failed to load workers. Please try again.');
+      setWorkers([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSearch = () => {
+    setSearchParams(prev => ({ ...prev, page: 0 }));
+    searchWorkers();
+  };
+
   const handleCreateWorker = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.positionUuid) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     try {
-      setError('');
-      const response = await workersApi.create(formData);
+      setSubmitting(true);
+      setError(null);
+
+      const response = await workersApi.create({
+        ...formData,
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        team: formData.team.trim() || ''
+      });
+
       if (response.success) {
-        setSuccess('Worker created successfully!');
+        showSuccessMessage('Worker created successfully!');
         setShowCreateModal(false);
         resetForm();
-        loadData();
-        setTimeout(() => setSuccess(''), 3000);
+        searchWorkers();
+      } else {
+        setError(response.message || 'Failed to create worker');
       }
-    } catch (err) {
-      setError('Failed to create worker. Please try again.');
-      console.error('Error creating worker:', err);
+    } catch (error: any) {
+      console.error('Error creating worker:', error);
+      setError(error.response?.data?.message || 'Failed to create worker. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -93,53 +180,98 @@ const WorkersManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedWorker) return;
 
+    if (!formData.fullName.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.positionUuid) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     try {
-      setError('');
-      const response = await workersApi.update(selectedWorker.uuid, formData);
+      setSubmitting(true);
+      setError(null);
+
+      const response = await workersApi.update(selectedWorker.uuid, {
+        ...formData,
+        fullName: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        team: formData.team.trim() || ''
+      });
+
       if (response.success) {
-        setSuccess('Worker updated successfully!');
+        showSuccessMessage('Worker updated successfully!');
         setShowEditModal(false);
-        setSelectedWorker(null);
         resetForm();
-        loadData();
-        setTimeout(() => setSuccess(''), 3000);
+        searchWorkers();
+      } else {
+        setError(response.message || 'Failed to update worker');
       }
-    } catch (err) {
-      setError('Failed to update worker. Please try again.');
-      console.error('Error updating worker:', err);
+    } catch (error: any) {
+      console.error('Error updating worker:', error);
+      setError(error.response?.data?.message || 'Failed to update worker. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDeleteWorker = async (worker: Worker) => {
-    if (!window.confirm(`Are you sure you want to delete ${worker.fullName}?`)) return;
+  const handleDeleteWorker = async () => {
+    if (!workerToDelete) return;
 
     try {
-      setError('');
-      const response = await workersApi.delete(worker.uuid);
+      setDeleting(true);
+      setError(null);
+
+      const response = await workersApi.delete(workerToDelete.uuid);
       if (response.success) {
-        setSuccess('Worker deleted successfully!');
-        loadData();
-        setTimeout(() => setSuccess(''), 3000);
+        showSuccessMessage('Worker deleted successfully!');
+        setShowDeleteModal(false);
+        setWorkerToDelete(null);
+        searchWorkers();
+      } else {
+        setError(response.message || 'Failed to delete worker');
       }
-    } catch (err) {
-      setError('Failed to delete worker. Please try again.');
-      console.error('Error deleting worker:', err);
+    } catch (error: any) {
+      console.error('Error deleting worker:', error);
+      setError(error.response?.data?.message || 'Failed to delete worker. Please try again.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleTogglePayable = async (worker: Worker) => {
     try {
-      setError('');
       const response = await workersApi.togglePayable(worker.uuid, !worker.payable);
       if (response.success) {
-        setSuccess(`Worker ${worker.payable ? 'disabled' : 'enabled'} for payroll!`);
-        loadData();
-        setTimeout(() => setSuccess(''), 3000);
+        showSuccessMessage(`Worker ${!worker.payable ? 'enabled' : 'disabled'} for payroll successfully!`);
+        searchWorkers();
+      } else {
+        setError(response.message || 'Failed to update worker payable status');
       }
-    } catch (err) {
-      setError('Failed to update worker payroll status.');
-      console.error('Error toggling payable:', err);
+    } catch (error: any) {
+      console.error('Error toggling payable status:', error);
+      setError('Failed to update worker payable status. Please try again.');
     }
+  };
+
+  const handleEdit = (worker: Worker) => {
+    setSelectedWorker(worker);
+    setFormData({
+      fullName: worker.fullName,
+      phone: worker.phone,
+      email: worker.email,
+      payFrequency: worker.payFrequency,
+      rate: worker.rate,
+      status: worker.status,
+      nationalId: worker.nationalId || '',
+      kraPin: worker.kraPin || '',
+      team: worker.team,
+      positionUuid: worker.positionUuid
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = (worker: Worker) => {
+    setWorkerToDelete(worker);
+    setShowDeleteModal(true);
   };
 
   const resetForm = () => {
@@ -149,242 +281,376 @@ const WorkersManagement: React.FC = () => {
       email: '',
       payFrequency: 'WEEKLY',
       rate: 0,
+      status: 'ACTIVE',
       nationalId: '',
       kraPin: '',
       team: '',
       positionUuid: ''
     });
+    setSelectedWorker(null);
+    setError(null);
   };
 
-  const openEditModal = (worker: Worker) => {
-    setSelectedWorker(worker);
-    setFormData({
-      fullName: worker.fullName,
-      phone: worker.phone,
-      email: worker.email,
-      payFrequency: worker.payFrequency,
-      rate: worker.rate,
-      nationalId: worker.nationalId || '',
-      kraPin: worker.kraPin || '',
-      team: worker.team || '',
-      positionUuid: worker.positionUuid
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    resetForm();
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setSearchParams(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setSearchParams(prev => ({ ...prev, size: newSize, page: 0 }));
+  };
+
+  const clearFilters = () => {
+    setSearchParams({
+      page: 0,
+      size: 20,
+      keyword: '',
+      status: undefined,
+      payFrequency: undefined,
+      payable: undefined,
+      team: '',
+      minRate: undefined,
+      maxRate: undefined
     });
-    setShowEditModal(true);
   };
 
-  // Filter workers based on search and filters
-  const filteredWorkers = workers.filter(worker => {
-    const matchesSearch = worker.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         worker.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         worker.phone.includes(searchTerm);
-    
-    const matchesPosition = !selectedPosition || worker.positionUuid === selectedPosition;
-    const matchesStatus = !statusFilter || worker.status === statusFilter;
-    
-    return matchesSearch && matchesPosition && matchesStatus;
-  });
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
 
-  const getStatusBadge = (status: string) => {
-    const badgeClass = status === 'ACTIVE' ? 'bg-success' : 'bg-danger';
-    return <span className={`badge ${badgeClass}`}>{status}</span>;
+    for (let i = Math.max(1, pagination.page - delta + 1);
+         i <= Math.min(pagination.totalPages - 1, pagination.page + delta + 1);
+         i++) {
+      range.push(i);
+    }
+
+    if (pagination.page - delta > 1) {
+      rangeWithDots.push(0, '...');
+    } else {
+      rangeWithDots.push(0);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (pagination.page + delta < pagination.totalPages - 2) {
+      rangeWithDots.push('...', pagination.totalPages - 1);
+    } else if (pagination.totalPages > 1) {
+      rangeWithDots.push(pagination.totalPages - 1);
+    }
+
+    return rangeWithDots;
   };
 
-  const getPayableBadge = (payable: boolean) => {
-    const badgeClass = payable ? 'bg-info' : 'bg-secondary';
-    const text = payable ? 'Payable' : 'Not Payable';
-    return <span className={`badge ${badgeClass}`}>{text}</span>;
-  };
-
-  if (loading) {
+  if (loading && workers.length === 0) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="container-fluid p-4">
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="text-center">
+            <Loader2 className="spinner-border text-primary mb-3" size={48} />
+            <p className="text-muted">Loading workers...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container-fluid">
-      {/* Header */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h2 className={`fw-bold mb-1 ${isDarkMode ? 'text-white' : 'text-dark'}`}>
-                <Users className="me-2" size={28} />
-                Workers Management
-              </h2>
-              <p className="text-muted mb-0">Manage your workforce and employee information</p>
-            </div>
-            <button
-              className="btn btn-primary d-flex align-items-center"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus size={18} className="me-2" />
-              Add Worker
-            </button>
-          </div>
+    <div className="container-fluid p-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-0">Workers Management</h2>
+          <small className="text-muted">
+            {pagination.totalElements} worker{pagination.totalElements === 1 ? '' : 's'} found
+          </small>
         </div>
+        <button
+          className="btn btn-primary d-flex align-items-center gap-2"
+          onClick={() => setShowCreateModal(true)}
+          disabled={submitting}
+        >
+          <Plus size={20} />
+          Add Worker
+        </button>
       </div>
 
-      {/* Alerts */}
+      {/* Success Message */}
+      {successMessage && (
+        <div className="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+          <CheckCircle size={20} />
+          {successMessage}
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setSuccessMessage(null)}
+            aria-label="Close"
+          ></button>
+        </div>
+      )}
+
+      {/* Error Message */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
           {error}
           <button
             type="button"
             className="btn-close"
-            onClick={() => setError('')}
+            onClick={() => setError(null)}
             aria-label="Close"
           ></button>
         </div>
       )}
 
-      {success && (
-        <div className="alert alert-success alert-dismissible fade show" role="alert">
-          {success}
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setSuccess('')}
-            aria-label="Close"
-          ></button>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className={`card mb-4 ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+      {/* Search and Filters */}
+      <div className="card mb-4">
         <div className="card-body">
           <div className="row g-3">
             <div className="col-md-4">
-              <div className="position-relative">
-                <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" size={16} />
+              <div className="input-group">
+                <span className="input-group-text">
+                  <Search size={16} />
+                </span>
                 <input
                   type="text"
-                  className={`form-control ps-5 ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                  placeholder="Search workers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-control"
+                  placeholder="Search by name, email, phone..."
+                  value={searchParams.keyword || ''}
+                  onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
                 />
               </div>
             </div>
-            <div className="col-md-3">
+
+            <div className="col-md-2">
               <select
-                className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                value={selectedPosition}
-                onChange={(e) => setSelectedPosition(e.target.value)}
-              >
-                <option value="">All Positions</option>
-                {positions.map(position => (
-                  <option key={position.uuid} value={position.uuid}>
-                    {position.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-3">
-              <select
-                className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                title='Status'
+                className="form-select"
+                value={searchParams.status || ''}
+                onChange={(e) => setSearchParams(prev => ({
+                  ...prev,
+                  status: e.target.value as 'ACTIVE' | 'INACTIVE' | undefined || undefined
+                }))}
               >
                 <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
               </select>
             </div>
+
             <div className="col-md-2">
-              <button
-                className="btn btn-outline-secondary w-100"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedPosition('');
-                  setStatusFilter('');
-                }}
+              <select
+                title='Pay Frequency'
+                className="form-select"
+                value={searchParams.payFrequency || ''}
+                onChange={(e) => setSearchParams(prev => ({
+                  ...prev,
+                  payFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined || undefined
+                }))}
               >
-                <Filter size={16} className="me-1" />
-                Clear
-              </button>
+                <option value="">All Frequency</option>
+                <option value="DAILY">DAILY</option>
+                <option value="WEEKLY">WEEKLY</option>
+                <option value="MONTHLY">MONTHLY</option>
+              </select>
+            </div>
+
+            <div className="col-md-2">
+              <select
+                title='Payable'
+                className="form-select"
+                value={searchParams.payable === undefined ? '' : searchParams.payable.toString()}
+                onChange={(e) => setSearchParams(prev => ({
+                  ...prev,
+                  payable: e.target.value === '' ? undefined : e.target.value === 'true'
+                }))}
+              >
+                <option value="">All Payable</option>
+                <option value="true">Payable</option>
+                <option value="false">Not Payable</option>
+              </select>
+            </div>
+
+            <div className="col-md-2">
+              <div className="d-flex gap-2">
+                <button
+                  className="btn btn-outline-primary"
+                  onClick={handleSearch}
+                  disabled={loading}
+                >
+                  <Search size={16} />
+                </button>
+                <button
+                  className="btn btn-outline-secondary"
+                  onClick={clearFilters}
+                  disabled={loading}
+                >
+                  <RefreshCw size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="row g-3 mt-2">
+            <div className="col-md-3">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Team"
+                value={searchParams.team || ''}
+                onChange={(e) => setSearchParams(prev => ({ ...prev, team: e.target.value }))}
+              />
+            </div>
+            <div className="col-md-3">
+              <input
+                type="number"
+                className="form-control"
+                placeholder="Min Rate"
+                value={searchParams.minRate || ''}
+                onChange={(e) => setSearchParams(prev => ({
+                  ...prev,
+                  minRate: e.target.value ? Number(e.target.value) : undefined
+                }))}
+              />
+            </div>
+            <div className="col-md-3">
+              <input
+                type="number"
+                className="form-control"
+                placeholder="Max Rate"
+                value={searchParams.maxRate || ''}
+                onChange={(e) => setSearchParams(prev => ({
+                  ...prev,
+                  maxRate: e.target.value ? Number(e.target.value) : undefined
+                }))}
+              />
+            </div>
+            <div className="col-md-3">
+              <select
+              title='Workers per page'
+                className="form-select"
+                value={searchParams.size}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Workers Table */}
-      <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
+      {/* Data Table */}
+      <div className="card">
         <div className="card-body p-0">
+          {loading && (
+            <div className="text-center p-3">
+              <Loader2 className="spinner-border text-primary" size={24} />
+            </div>
+          )}
+
           <div className="table-responsive">
             <table className="table table-hover mb-0">
-              <thead className={isDarkMode ? 'table-dark' : 'table-light'}>
+              <thead className={`table-${theme === 'dark' ? 'dark' : 'light'}`}>
                 <tr>
                   <th>Worker</th>
-                  <th>Position</th>
                   <th>Contact</th>
-                  <th>Pay Details</th>
+                  <th>Position</th>
+                  <th>Pay Info</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th>Team</th>
+                  <th className="col-1">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredWorkers.length === 0 ? (
+                {workers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-4">
+                    <td colSpan={7} className="text-center py-5">
                       <div className="text-muted">
-                        <Users size={48} className="mb-3 opacity-50" />
-                        <p className="mb-0">No workers found</p>
+                        {pagination.totalElements === 0 ? (
+                          <>
+                            <Users size={48} className="mb-3 opacity-50" />
+                            <p className="mb-2">No workers found</p>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => setShowCreateModal(true)}
+                            >
+                              <Plus size={16} className="me-1" />
+                              Add your first worker
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="mb-2">No workers match your current filters</p>
+                            <button
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={clearFilters}
+                            >
+                              Clear filters
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredWorkers.map((worker) => (
+                  workers.map((worker) => (
                     <tr key={worker.uuid}>
                       <td>
-                        <div className="d-flex align-items-center">
-                          <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
-                               style={{ width: '40px', height: '40px' }}>
-                            <span className="text-white fw-bold">
-                              {worker.fullName.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="fw-semibold">{worker.fullName}</div>
-                            <small className="text-muted">{worker.team}</small>
-                          </div>
+                        <div>
+                          <div className="fw-medium">{worker.fullName}</div>
+                          {worker.nationalId && (
+                            <small className="text-muted">ID: {worker.nationalId}</small>
+                          )}
                         </div>
                       </td>
                       <td>
-                        <span className="badge bg-info">{worker.positionName}</span>
-                      </td>
-                      <td>
                         <div>
-                          <div className="d-flex align-items-center mb-1">
-                            <Phone size={14} className="me-2 text-muted" />
-                            <small>{worker.phone}</small>
-                          </div>
-                          <div className="d-flex align-items-center">
-                            <Mail size={14} className="me-2 text-muted" />
+                          <div className="d-flex align-items-center gap-1 mb-1">
+                            <Mail size={14} />
                             <small>{worker.email}</small>
                           </div>
+                          <div className="d-flex align-items-center gap-1">
+                            <Phone size={14} />
+                            <small>{worker.phone}</small>
+                          </div>
                         </div>
                       </td>
                       <td>
+                        <span className="badge bg-light text-dark">{worker.positionName}</span>
+                      </td>
+                      <td>
                         <div>
-                          <div className="d-flex align-items-center mb-1">
-                            <DollarSign size={14} className="me-2 text-muted" />
-                            <span className="fw-semibold">KES {worker.rate.toLocaleString()}</span>
+                          <div className="d-flex align-items-center gap-1 mb-1">
+                            <DollarSign size={14} />
+                            <span>KES {worker.rate.toLocaleString()}</span>
                           </div>
                           <small className="text-muted">{worker.payFrequency}</small>
                         </div>
                       </td>
                       <td>
                         <div>
-                          {getStatusBadge(worker.status)}
-                          <div className="mt-1">
-                            {getPayableBadge(worker.payable)}
-                          </div>
+                          <span className={`badge ${worker.status === 'ACTIVE' ? 'bg-success' : 'bg-secondary'}`}>
+                            {worker.status}
+                          </span>
+                          <br />
+                          <span className={`badge mt-1 ${worker.payable ? 'bg-info' : 'bg-warning'}`}>
+                            {worker.payable ? 'Payable' : 'Not Payable'}
+                          </span>
                         </div>
+                      </td>
+                      <td>
+                        {worker.team && (
+                          <div className="d-flex align-items-center gap-1">
+                            <MapPin size={14} />
+                            <span>{worker.team}</span>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div className="dropdown">
@@ -392,45 +658,36 @@ const WorkersManagement: React.FC = () => {
                             className="btn btn-sm btn-outline-secondary"
                             type="button"
                             data-bs-toggle="dropdown"
-                            aria-expanded="false"
+                            aria-label="Worker actions"
                           >
-                            <MoreVertical size={14} />
+                            <MoreVertical size={16} />
                           </button>
                           <ul className="dropdown-menu">
                             <li>
                               <button
-                                className="dropdown-item"
-                                onClick={() => openEditModal(worker)}
+                                className="dropdown-item d-flex align-items-center gap-2"
+                                onClick={() => handleEdit(worker)}
                               >
-                                <Edit2 size={14} className="me-2" />
+                                <Edit size={16} />
                                 Edit
                               </button>
                             </li>
                             <li>
                               <button
-                                className="dropdown-item"
+                                className="dropdown-item d-flex align-items-center gap-2"
                                 onClick={() => handleTogglePayable(worker)}
                               >
-                                {worker.payable ? (
-                                  <>
-                                    <UserX size={14} className="me-2" />
-                                    Disable Payroll
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserCheck size={14} className="me-2" />
-                                    Enable Payroll
-                                  </>
-                                )}
+                                {worker.payable ? <UserX size={16} /> : <UserCheck size={16} />}
+                                {worker.payable ? 'Disable Payroll' : 'Enable Payroll'}
                               </button>
                             </li>
                             <li><hr className="dropdown-divider" /></li>
                             <li>
                               <button
-                                className="dropdown-item text-danger"
-                                onClick={() => handleDeleteWorker(worker)}
+                                className="dropdown-item text-danger d-flex align-items-center gap-2"
+                                onClick={() => handleDeleteClick(worker)}
                               >
-                                <Trash2 size={14} className="me-2" />
+                                <Trash2 size={16} />
                                 Delete
                               </button>
                             </li>
@@ -446,106 +703,137 @@ const WorkersManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="row mt-4">
-        <div className="col-md-3">
-          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-            <div className="card-body text-center">
-              <Users size={32} className="text-primary mb-2" />
-              <h4 className="fw-bold">{workers.length}</h4>
-              <small className="text-muted">Total Workers</small>
-            </div>
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="d-flex justify-content-between align-items-center mt-4">
+          <div className="text-muted">
+            Showing {pagination.page * pagination.size + 1} to{' '}
+            {Math.min((pagination.page + 1) * pagination.size, pagination.totalElements)} of{' '}
+            {pagination.totalElements} entries
           </div>
-        </div>
-        <div className="col-md-3">
-          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-            <div className="card-body text-center">
-              <UserCheck size={32} className="text-success mb-2" />
-              <h4 className="fw-bold">{workers.filter(w => w.status === 'ACTIVE').length}</h4>
-              <small className="text-muted">Active Workers</small>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-            <div className="card-body text-center">
-              <DollarSign size={32} className="text-info mb-2" />
-              <h4 className="fw-bold">{workers.filter(w => w.payable).length}</h4>
-              <small className="text-muted">Payable Workers</small>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : 'bg-white'}`}>
-            <div className="card-body text-center">
-              <MapPin size={32} className="text-warning mb-2" />
-              <h4 className="fw-bold">{positions.length}</h4>
-              <small className="text-muted">Total Positions</small>
-            </div>
-          </div>
-        </div>
-      </div>
+          <nav>
+            <ul className="pagination mb-0">
+              <li className={`page-item ${pagination.page === 0 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 0}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+              </li>
 
-      {/* Create Worker Modal */}
-      {showCreateModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              {getPageNumbers().map((pageNumber, index) => (
+                <li
+                  key={index}
+                  className={`page-item ${
+                    pageNumber === pagination.page ? 'active' : ''
+                  } ${pageNumber === '...' ? 'disabled' : ''}`}
+                >
+                  {pageNumber === '...' ? (
+                    <span className="page-link">...</span>
+                  ) : (
+                    <button
+                      className="page-link"
+                      onClick={() => handlePageChange(pageNumber as number)}
+                    >
+                      {(pageNumber as number) + 1}
+                    </button>
+                  )}
+                </li>
+              ))}
+
+              <li className={`page-item ${pagination.page >= pagination.totalPages - 1 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages - 1}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {(showCreateModal || showEditModal) && (
+        <div className="modal show d-block" tabIndex={-1}>
           <div className="modal-dialog modal-lg">
-            <div className={`modal-content ${isDarkMode ? 'bg-dark text-white' : ''}`}>
+            <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Add New Worker</h5>
+                <h5 className="modal-title">
+                  {showCreateModal ? 'Add New Worker' : 'Edit Worker'}
+                </h5>
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    resetForm();
-                  }}
+                  onClick={handleCloseModal}
                   aria-label="Close"
+                  disabled={submitting}
                 ></button>
               </div>
-              <form onSubmit={handleCreateWorker}>
+              <form onSubmit={showCreateModal ? handleCreateWorker : handleUpdateWorker}>
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label">Full Name *</label>
+                      <label htmlFor="fullName" className="form-label">
+                        Full Name *
+                      </label>
                       <input
                         type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-control"
+                        id="fullName"
                         value={formData.fullName}
                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                         required
+                        disabled={submitting}
+                        maxLength={100}
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Phone *</label>
-                      <input
-                        type="tel"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Email *</label>
+                      <label htmlFor="email" className="form-label">
+                        Email *
+                      </label>
                       <input
                         type="email"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-control"
+                        id="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
+                        disabled={submitting}
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Position *</label>
+                      <label htmlFor="phone" className="form-label">
+                        Phone *
+                      </label>
+                      <input
+                        type="tel"
+                        className="form-control"
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        required
+                        disabled={submitting}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label htmlFor="position" className="form-label">
+                        Position *
+                      </label>
                       <select
-                        className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-select"
+                        id="position"
                         value={formData.positionUuid}
                         onChange={(e) => setFormData({ ...formData, positionUuid: e.target.value })}
                         required
+                        disabled={submitting}
                       >
                         <option value="">Select Position</option>
-                        {positions.map(position => (
+                        {positions.map((position) => (
                           <option key={position.uuid} value={position.uuid}>
                             {position.name}
                           </option>
@@ -553,55 +841,94 @@ const WorkersManagement: React.FC = () => {
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Pay Frequency *</label>
+                      <label htmlFor="team" className="form-label">
+                        Team
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="team"
+                        value={formData.team}
+                        onChange={(e) => setFormData({ ...formData, team: e.target.value })}
+                        disabled={submitting}
+                        maxLength={50}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label htmlFor="status" className="form-label">
+                        Status *
+                      </label>
                       <select
-                        className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.payFrequency}
-                        onChange={(e) => setFormData({ ...formData, payFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
+                        className="form-select"
+                        id="status"
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
                         required
+                        disabled={submitting}
                       >
-                        <option value="DAILY">Daily</option>
-                        <option value="WEEKLY">Weekly</option>
-                        <option value="MONTHLY">Monthly</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Rate (KES) *</label>
+                      <label htmlFor="payFrequency" className="form-label">
+                        Pay Frequency *
+                      </label>
+                      <select
+                        className="form-select"
+                        id="payFrequency"
+                        value={formData.payFrequency}
+                        onChange={(e) => setFormData({ ...formData, payFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
+                        required
+                        disabled={submitting}
+                      >
+                        <option value="DAILY">DAILY</option>
+                        <option value="WEEKLY">WEEKLY</option>
+                        <option value="MONTHLY">MONTHLY</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label htmlFor="rate" className="form-label">
+                        Rate (KES) *
+                      </label>
                       <input
                         type="number"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-control"
+                        id="rate"
                         value={formData.rate}
-                        onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
+                        onChange={(e) => setFormData({ ...formData, rate: Number(e.target.value) })}
                         required
                         min="0"
                         step="0.01"
+                        disabled={submitting}
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Team</label>
+                      <label htmlFor="nationalId" className="form-label">
+                        National ID
+                      </label>
                       <input
                         type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.team}
-                        onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">National ID</label>
-                      <input
-                        type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-control"
+                        id="nationalId"
                         value={formData.nationalId}
                         onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
+                        disabled={submitting}
+                        maxLength={20}
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">KRA PIN</label>
+                      <label htmlFor="kraPin" className="form-label">
+                        KRA PIN
+                      </label>
                       <input
                         type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
+                        className="form-control"
+                        id="kraPin"
                         value={formData.kraPin}
                         onChange={(e) => setFormData({ ...formData, kraPin: e.target.value })}
+                        disabled={submitting}
+                        maxLength={20}
                       />
                     </div>
                   </div>
@@ -610,15 +937,18 @@ const WorkersManagement: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      resetForm();
-                    }}
+                    onClick={handleCloseModal}
+                    disabled={submitting}
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    Create Worker
+                  <button
+                    type="submit"
+                    className="btn btn-primary d-flex align-items-center gap-2"
+                    disabled={submitting}
+                  >
+                    {submitting && <Loader2 size={16} className="spinner-border spinner-border-sm" />}
+                    {submitting ? 'Saving...' : (showCreateModal ? 'Create' : 'Update')} Worker
                   </button>
                 </div>
               </form>
@@ -627,144 +957,46 @@ const WorkersManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Worker Modal */}
-      {showEditModal && selectedWorker && (
-        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className={`modal-content ${isDarkMode ? 'bg-dark text-white' : ''}`}>
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && workerToDelete && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog">
+            <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Edit Worker: {selectedWorker.fullName}</h5>
+                <h5 className="modal-title">Confirm Delete</h5>
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setSelectedWorker(null);
-                    resetForm();
-                  }}
+                  onClick={() => setShowDeleteModal(false)}
                   aria-label="Close"
+                  disabled={deleting}
                 ></button>
               </div>
-              <form onSubmit={handleUpdateWorker}>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Full Name *</label>
-                      <input
-                        type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.fullName}
-                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Phone *</label>
-                      <input
-                        type="tel"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Email *</label>
-                      <input
-                        type="email"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Position *</label>
-                      <select
-                        className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.positionUuid}
-                        onChange={(e) => setFormData({ ...formData, positionUuid: e.target.value })}
-                        required
-                      >
-                        <option value="">Select Position</option>
-                        {positions.map(position => (
-                          <option key={position.uuid} value={position.uuid}>
-                            {position.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Pay Frequency *</label>
-                      <select
-                        className={`form-select ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.payFrequency}
-                        onChange={(e) => setFormData({ ...formData, payFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY' })}
-                        required
-                      >
-                        <option value="DAILY">Daily</option>
-                        <option value="WEEKLY">Weekly</option>
-                        <option value="MONTHLY">Monthly</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Rate (KES) *</label>
-                      <input
-                        type="number"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.rate}
-                        onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) })}
-                        required
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Team</label>
-                      <input
-                        type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.team}
-                        onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">National ID</label>
-                      <input
-                        type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.nationalId}
-                        onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">KRA PIN</label>
-                      <input
-                        type="text"
-                        className={`form-control ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}
-                        value={formData.kraPin}
-                        onChange={(e) => setFormData({ ...formData, kraPin: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setSelectedWorker(null);
-                      resetForm();
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Update Worker
-                  </button>
-                </div>
-              </form>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to delete the worker "{workerToDelete.fullName}"?
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger d-flex align-items-center gap-2"
+                  onClick={handleDeleteWorker}
+                  disabled={deleting}
+                >
+                  {deleting && <Loader2 size={16} className="spinner-border spinner-border-sm" />}
+                  {deleting ? 'Deleting...' : 'Delete Worker'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

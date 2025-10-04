@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { positionsApi } from '../services/api';
 import type { Position, CreatePositionRequest, UpdatePositionRequest } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, Loader2 } from 'lucide-react';
 
 interface PaginationData {
   currentPage: number;
@@ -13,15 +14,18 @@ interface PaginationData {
 
 const PositionsManagement: React.FC = () => {
   const { theme } = useTheme();
-  const [positions, setPositions] = useState<Position[]>([]);
+  const [allPositions, setAllPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showModal, setShowModal] = useState(false);
   const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [positionToDelete, setPositionToDelete] = useState<Position | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Pagination states
   const [pagination, setPagination] = useState<PaginationData>({
@@ -40,29 +44,27 @@ const PositionsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchPositions();
-  }, [pagination.currentPage, activeFilter]);
+  }, []);
+
+  useEffect(() => {
+    // Update pagination when search or filter changes
+    updatePagination();
+  }, [searchTerm, activeFilter, allPositions]);
+
+  const showSuccessMessage = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
 
   const fetchPositions = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const activeOnly = activeFilter === 'all' ? undefined : activeFilter === 'active';
-      const response = await positionsApi.list(activeOnly);
+      const response = await positionsApi.list();
       
       if (response.success) {
-        // Since the API doesn't provide pagination info, we'll implement client-side pagination
-        const allPositions = response.data;
-        const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
-        const endIndex = startIndex + pagination.itemsPerPage;
-        const paginatedPositions = allPositions.slice(startIndex, endIndex);
-        
-        setPositions(paginatedPositions);
-        setPagination(prev => ({
-          ...prev,
-          totalItems: allPositions.length,
-          totalPages: Math.ceil(allPositions.length / prev.itemsPerPage)
-        }));
+        setAllPositions(response.data);
       } else {
         setError(response.message || 'Failed to fetch positions');
       }
@@ -74,16 +76,63 @@ const PositionsManagement: React.FC = () => {
     }
   };
 
+  const updatePagination = () => {
+    const filtered = getFilteredPositions();
+    const totalPages = Math.ceil(filtered.length / pagination.itemsPerPage);
+    
+    setPagination(prev => ({
+      ...prev,
+      totalItems: filtered.length,
+      totalPages: totalPages,
+      currentPage: prev.currentPage > totalPages ? 1 : prev.currentPage
+    }));
+  };
+
+  const getFilteredPositions = () => {
+    let filtered = allPositions;
+
+    // Apply status filter
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(position => 
+        activeFilter === 'active' ? position.active : !position.active
+      );
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(position =>
+        position.name.toLowerCase().includes(searchLower) ||
+        position.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  };
+
+  const getPaginatedPositions = () => {
+    const filtered = getFilteredPositions();
+    const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+    const endIndex = startIndex + pagination.itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.name.trim() || !formData.description.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     try {
+      setSubmitting(true);
       setError(null);
       
       if (editingPosition) {
         const updateData: UpdatePositionRequest = {
-          name: formData.name,
-          description: formData.description,
+          name: formData.name.trim(),
+          description: formData.description.trim(),
           active: formData.active
         };
         
@@ -91,14 +140,22 @@ const PositionsManagement: React.FC = () => {
         if (response.success) {
           await fetchPositions();
           handleCloseModal();
+          showSuccessMessage('Position updated successfully!');
         } else {
           setError(response.message || 'Failed to update position');
         }
       } else {
-        const response = await positionsApi.create(formData);
+        const createData: CreatePositionRequest = {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          active: formData.active
+        };
+        
+        const response = await positionsApi.create(createData);
         if (response.success) {
           await fetchPositions();
           handleCloseModal();
+          showSuccessMessage('Position created successfully!');
         } else {
           setError(response.message || 'Failed to create position');
         }
@@ -106,6 +163,8 @@ const PositionsManagement: React.FC = () => {
     } catch (error) {
       console.error('Error saving position:', error);
       setError('Failed to save position. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -113,18 +172,28 @@ const PositionsManagement: React.FC = () => {
     if (!positionToDelete) return;
     
     try {
+      setDeleting(true);
       setError(null);
       const response = await positionsApi.delete(positionToDelete.uuid);
       if (response.success) {
         await fetchPositions();
         setShowDeleteModal(false);
         setPositionToDelete(null);
+        showSuccessMessage('Position deleted successfully!');
       } else {
         setError(response.message || 'Failed to delete position');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting position:', error);
-      setError('Failed to delete position. Please try again.');
+      if (error.response?.status === 500) {
+        setError('Cannot delete position. It may be assigned to workers or have dependencies.');
+      } else if (error.response?.status === 404) {
+        setError('Position not found. It may have already been deleted.');
+      } else {
+        setError('Failed to delete position. Please try again.');
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -168,11 +237,6 @@ const PositionsManagement: React.FC = () => {
     }));
   };
 
-  const filteredPositions = positions.filter(position =>
-    position.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    position.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const getPageNumbers = () => {
     const delta = 2;
     const range = [];
@@ -203,13 +267,18 @@ const PositionsManagement: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-25">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="container-fluid p-4">
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="text-center">
+            <Loader2 className="spinner-border text-primary mb-3" size={48} />
+            <p className="text-muted">Loading positions...</p>
+          </div>
         </div>
       </div>
     );
   }
+
+  const displayedPositions = getPaginatedPositions();
 
   return (
     <div className="container-fluid p-4">
@@ -218,12 +287,28 @@ const PositionsManagement: React.FC = () => {
         <button
           className="btn btn-primary d-flex align-items-center gap-2"
           onClick={() => setShowModal(true)}
+          disabled={submitting}
         >
           <Plus size={20} />
           Add Position
         </button>
       </div>
 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+          <CheckCircle size={20} />
+          {successMessage}
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setSuccessMessage(null)}
+            aria-label="Close"
+          ></button>
+        </div>
+      )}
+
+      {/* Error Message */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
           {error}
@@ -279,6 +364,19 @@ const PositionsManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Results Summary */}
+      <div className="mb-3">
+        <small className="text-muted">
+          {pagination.totalItems === 0 ? (
+            'No positions found'
+          ) : (
+            `Showing ${displayedPositions.length} of ${pagination.totalItems} position${pagination.totalItems === 1 ? '' : 's'}`
+          )}
+          {searchTerm && ` matching "${searchTerm}"`}
+          {activeFilter !== 'all' && ` (${activeFilter} only)`}
+        </small>
+      </div>
+
       {/* Data Table */}
       <div className="card">
         <div className="card-body p-0">
@@ -294,14 +392,40 @@ const PositionsManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredPositions.length === 0 ? (
+                {displayedPositions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-4 text-muted">
-                      No positions found
+                    <td colSpan={5} className="text-center py-5">
+                      <div className="text-muted">
+                        {pagination.totalItems === 0 ? (
+                          <>
+                            <p className="mb-2">No positions found</p>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => setShowModal(true)}
+                            >
+                              <Plus size={16} className="me-1" />
+                              Create your first position
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="mb-2">No positions match your current filters</p>
+                            <button
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() => {
+                                setSearchTerm('');
+                                setActiveFilter('all');
+                              }}
+                            >
+                              Clear filters
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  filteredPositions.map((position) => (
+                  displayedPositions.map((position) => (
                     <tr key={position.uuid}>
                       <td className="fw-medium">{position.name}</td>
                       <td>{position.description}</td>
@@ -311,7 +435,7 @@ const PositionsManagement: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        {new Date().toLocaleDateString()} {/* Since timestamp is not in the response */}
+                        {new Date().toLocaleDateString()}
                       </td>
                       <td>
                         <div className="dropdown">
@@ -358,7 +482,7 @@ const PositionsManagement: React.FC = () => {
       {pagination.totalPages > 1 && (
         <div className="d-flex justify-content-between align-items-center mt-4">
           <div className="text-muted">
-            Showing {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{' '}
+            Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
             {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
             {pagination.totalItems} entries
           </div>
@@ -373,7 +497,7 @@ const PositionsManagement: React.FC = () => {
                   <ChevronLeft size={16} />
                 </button>
               </li>
-              
+
               {getPageNumbers().map((pageNumber, index) => (
                 <li
                   key={index}
@@ -422,6 +546,7 @@ const PositionsManagement: React.FC = () => {
                   className="btn-close"
                   onClick={handleCloseModal}
                   aria-label="Close"
+                  disabled={submitting}
                 ></button>
               </div>
               <form onSubmit={handleSubmit}>
@@ -437,6 +562,8 @@ const PositionsManagement: React.FC = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
+                      disabled={submitting}
+                      maxLength={100}
                     />
                   </div>
                   <div className="mb-3">
@@ -450,6 +577,8 @@ const PositionsManagement: React.FC = () => {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       required
+                      disabled={submitting}
+                      maxLength={500}
                     ></textarea>
                   </div>
                   <div className="mb-3">
@@ -460,6 +589,7 @@ const PositionsManagement: React.FC = () => {
                         id="positionActive"
                         checked={formData.active}
                         onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                        disabled={submitting}
                       />
                       <label className="form-check-label" htmlFor="positionActive">
                         Active
@@ -472,11 +602,17 @@ const PositionsManagement: React.FC = () => {
                     type="button"
                     className="btn btn-secondary"
                     onClick={handleCloseModal}
+                    disabled={submitting}
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    {editingPosition ? 'Update' : 'Create'} Position
+                  <button 
+                    type="submit"
+                    className="btn btn-primary d-flex align-items-center gap-2"
+                    disabled={submitting}
+                  >
+                    {submitting && <Loader2 size={16} className="spinner-border spinner-border-sm" />}
+                    {submitting ? 'Saving...' : (editingPosition ? 'Update' : 'Create')} Position
                   </button>
                 </div>
               </form>
@@ -497,6 +633,7 @@ const PositionsManagement: React.FC = () => {
                   className="btn-close"
                   onClick={() => setShowDeleteModal(false)}
                   aria-label="Close"
+                  disabled={deleting}
                 ></button>
               </div>
               <div className="modal-body">
@@ -510,15 +647,18 @@ const PositionsManagement: React.FC = () => {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="btn btn-danger"
+                  className="btn btn-danger d-flex align-items-center gap-2"
                   onClick={handleDelete}
+                  disabled={deleting}
                 >
-                  Delete Position
+                  {deleting && <Loader2 size={16} className="spinner-border spinner-border-sm" />}
+                  {deleting ? 'Deleting...' : 'Delete Position'}
                 </button>
               </div>
             </div>
