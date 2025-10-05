@@ -55,4 +55,4 @@ export const SessionTestUtils = {
 };
 
 // Only available in development
-export const DevSessionControls = process.env.NODE_ENV === 'development' ? SessionTestUtils : null;
+export const DevSessionControls = import.meta.env.DEV ? SessionTestUtils : null;
