@@ -239,8 +239,12 @@ const PayrollManagement: React.FC = () => {
       console.error('Error downloading CSV:', error);
       
       // More specific error handling
-      if (error.response?.status === 500) {
-        setError('Server error occurred while generating CSV. The system retried but the issue persists. Please try again later.');
+      if (error.message?.includes('No payroll data available')) {
+        setError('No payroll periods found to export. Please create some payroll periods first.');
+      } else if (error.message?.includes('not CSV format') || error.message?.includes('invalid data')) {
+        setError('The server CSV endpoint is not working properly. Generated CSV from available data instead.');
+      } else if (error.response?.status === 500) {
+        setError('Server error occurred while generating CSV. Please try again later.');
       } else if (error.code === 'ECONNABORTED') {
         setError('Download timeout. Please try again.');
       } else if (error.message?.includes('Empty or invalid')) {
