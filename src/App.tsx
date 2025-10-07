@@ -8,6 +8,7 @@ import Login from './components/Login.tsx';
 import Dashboard from './components/Dashboard';
 import Positions from './components/Positions';
 import Workers from './components/Workers';
+import Payroll from './components/Payroll';
 
 // Component to set up the session notification callback
 const SessionNotificationSetup = () => {
@@ -49,6 +50,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Workers />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/payroll" 
+              element={
+                <ProtectedRoute>
+                  <Payroll />
                 </ProtectedRoute>
               } 
             />

@@ -125,19 +125,58 @@ export interface PaginatedResponse<T> {
 
 // Pay Period Types
 export interface PayPeriod {
+  id?: number;
   uuid: string;
+  label: string;
   frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'COMPLETED';
   startDate: string;
   endDate: string;
-  label?: string;
-  status: 'DRAFT' | 'APPROVED';
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
 }
 
 export interface CreatePayPeriodRequest {
   frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY';
   startDate: string;
   endDate: string;
+  label: string;
+}
+
+export interface UpdatePayPeriodRequest {
   label?: string;
+  frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  startDate?: string;
+  endDate?: string;
+  status?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'COMPLETED';
+}
+
+export interface PayrollSearchParams {
+  q?: string;
+  status?: string;
+  frequency?: string;
+  startFrom?: string;
+  startTo?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
+export interface PayrollSearchResponse {
+  content: PayPeriod[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface AutoAssignResponse {
+  status: string;
 }
 
 // Disbursement Types

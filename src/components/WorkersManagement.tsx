@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect }from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { workersApi, positionsApi } from '../services/api';
 import type { Worker, Position, CreateWorkerRequest, WorkerSearchParams, PaginatedResponse } from '../types';
@@ -477,6 +477,7 @@ const WorkersManagement: React.FC = () => {
             <div className="col-md-2">
               <div className="d-flex gap-2">
                 <button
+                  title='Search'
                   className="btn btn-outline-primary"
                   onClick={handleSearch}
                   disabled={loading}

@@ -14,6 +14,10 @@ import type {
   PaginatedResponse,
   PayPeriod,
   CreatePayPeriodRequest,
+  UpdatePayPeriodRequest,
+  PayrollSearchParams,
+  PayrollSearchResponse,
+  AutoAssignResponse,
   DisbursementBatch,
   Payout,
   CreateSinglePayoutRequest,
@@ -150,23 +154,102 @@ export const workersApi = {
 };
 
 export const payrollApi = {
+  // Search payroll periods with pagination
+  search: async (params: PayrollSearchParams): Promise<ApiResponse<PayrollSearchResponse>> => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+    const response: AxiosResponse<ApiResponse<PayrollSearchResponse>> = await api.get(`/api/v1/payroll/search?${queryParams}`);
+    return response.data;
+  },
+
+  // Create a new payroll period
   createPeriod: async (data: CreatePayPeriodRequest): Promise<ApiResponse<PayPeriod>> => {
-    const response: AxiosResponse<ApiResponse<PayPeriod>> = await api.post('/api/payroll/periods', data);
+    const response: AxiosResponse<ApiResponse<PayPeriod>> = await api.post('/api/v1/payroll/periods', data);
+    return response.data;
+  },
+
+  // Get a single payroll period by UUID
+  getPeriod: async (uuid: string): Promise<ApiResponse<PayPeriod>> => {
+    const response: AxiosResponse<ApiResponse<PayPeriod>> = await api.get(`/api/v1/payroll/${uuid}`);
+    return response.data;
+  },
+
+  // Update a payroll period
+  updatePeriod: async (uuid: string, data: UpdatePayPeriodRequest): Promise<ApiResponse<PayPeriod>> => {
+    const response: AxiosResponse<ApiResponse<PayPeriod>> = await api.put(`/api/v1/payroll/update/${uuid}`, data);
     return response.data;
   },
   
-  generatePayItems: async (periodUuid: string): Promise<ApiResponse<{ status: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ status: string }>> = await api.post(
-      `/api/payroll/periods/${periodUuid}/items:auto`
+  // Auto-assign workers to payroll period (only for DRAFT status)
+  autoAssignWorkers: async (periodUuid: string): Promise<ApiResponse<AutoAssignResponse>> => {
+    const response: AxiosResponse<ApiResponse<AutoAssignResponse>> = await api.post(
+      `/api/v1/payroll/periods/${periodUuid}/items:auto`
     );
     return response.data;
   },
   
-  approvePeriod: async (periodUuid: string): Promise<ApiResponse<{ status: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ status: string }>> = await api.post(
-      `/api/payroll/periods/${periodUuid}/approve`
+  // Approve payroll period (only for PENDING status)
+  approvePeriod: async (periodUuid: string): Promise<ApiResponse<{ additionalProp1: string; additionalProp2: string; additionalProp3: string }>> => {
+    const response: AxiosResponse<ApiResponse<{ additionalProp1: string; additionalProp2: string; additionalProp3: string }>> = await api.post(
+      `/api/v1/payroll/periods/${periodUuid}/approve`
     );
     return response.data;
+  },
+
+  // Download payroll periods as CSV
+  downloadCSV: async (): Promise<Blob> => {
+    const maxRetries = 2;
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`CSV download attempt ${attempt}/${maxRetries}`);
+        
+        // Create a new axios instance specifically for file downloads
+        const downloadApi = axios.create({
+          baseURL: BASE_URL,
+          headers: {
+            'accept': '*/*',
+            'Authorization': `Bearer ${SessionManager.getAccessToken()}`,
+          },
+          responseType: 'blob',
+          timeout: 30000, // 30 second timeout
+          validateStatus: (status) => status === 200, // Only accept 200 responses
+        });
+
+        const response = await downloadApi.get('/v1/payroll/periods:csv');
+        
+        // Verify the response is actually a blob and not empty
+        if (response.data instanceof Blob && response.data.size > 0) {
+          console.log('CSV download successful on attempt', attempt);
+          return response.data;
+        }
+        
+        throw new Error('Empty or invalid CSV data received');
+      } catch (error: any) {
+        console.error(`CSV download attempt ${attempt} failed:`, error);
+        lastError = error;
+        
+        // If it's a 500 error and we have more attempts, wait a bit and retry
+        if (error.response?.status === 500 && attempt < maxRetries) {
+          console.log(`500 error on attempt ${attempt}, retrying in 1 second...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        // If it's not a 500 error or we're on the last attempt, throw immediately
+        if (error.response?.status !== 500 || attempt === maxRetries) {
+          throw error;
+        }
+      }
+    }
+    
+    // If we get here, all retries failed
+    throw lastError;
   },
 };
 
