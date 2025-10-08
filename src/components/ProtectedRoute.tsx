@@ -1,5 +1,6 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { SessionManager } from '../utils/sessionManager';
 import { useAuth } from '../contexts/AuthContext';
 import type { ReactNode } from 'react';
 
@@ -9,6 +10,15 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  // If not loading and no authenticated user, ensure we don't flash a protected page
+  if (!isLoading && !isAuthenticated) {
+    const token = SessionManager.getAccessToken();
+    if (!token || SessionManager.isTokenExpired(token)) {
+      return <Navigate to="/login" replace state={{ from: location }} />;
+    }
+  }
 
   if (isLoading) {
     return (

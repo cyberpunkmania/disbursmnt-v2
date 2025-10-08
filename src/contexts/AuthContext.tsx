@@ -46,11 +46,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // On mount validate stored token (existence + expiry)
     const token = SessionManager.getAccessToken();
     if (token) {
-      const decodedUser = decodeToken(token);
-      setUser(decodedUser);
+      if (!SessionManager.isTokenExpired(token)) {
+        const decodedUser = decodeToken(token);
+        if (decodedUser) {
+          setUser(decodedUser);
+        } else {
+          SessionManager.clearTokens();
+        }
+      } else {
+        // Expired token – purge immediately so ProtectedRoute redirects straight to login
+        SessionManager.clearTokens();
+      }
     }
     setIsLoading(false);
   }, []);
