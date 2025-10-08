@@ -179,6 +179,52 @@ export interface AutoAssignResponse {
   status: string;
 }
 
+// Pay Item Types (workers assigned to a payroll period)
+export interface PayItem {
+  uuid: string;
+  createdAt: string;
+  periodUuid: string;
+  periodLabel: string;
+  workerUuid: string;
+  workerName: string;
+  workerPhone: string;
+  grossAmount: number;
+  deductions: number;
+  netAmount: number;
+  state: string; // e.g. LOCKED
+}
+
+export interface PayItemSearchParams {
+  periodUuid: string; // required
+  page?: number;
+  size?: number;
+  sort?: string; // e.g. createdAt,DESC
+}
+
+export interface PayItemSearchResponse {
+  content: PayItem[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    offset: number;
+    paged: boolean;
+    unpaged: boolean;
+    sort: {
+      sorted: boolean;
+      empty: boolean;
+      unsorted: boolean;
+    };
+  };
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+  empty: boolean;
+}
+
 // Disbursement Types
 export interface DisbursementBatch {
   uuid: string;

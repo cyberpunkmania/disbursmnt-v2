@@ -18,6 +18,8 @@ import type {
   PayrollSearchParams,
   PayrollSearchResponse,
   AutoAssignResponse,
+  PayItemSearchParams,
+  PayItemSearchResponse,
   DisbursementBatch,
   Payout,
   CreateSinglePayoutRequest,
@@ -275,6 +277,24 @@ export const payrollApi = {
       throw error;
     }
   },
+};
+
+// Pay Items (workers assigned to a pay period)
+export const payItemsApi = {
+  search: async (params: PayItemSearchParams): Promise<ApiResponse<PayItemSearchResponse>> => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
+      }
+    });
+    // ensure sort default
+    if (!params.sort) {
+      queryParams.append('sort', 'createdAt,DESC');
+    }
+    const response: AxiosResponse<ApiResponse<PayItemSearchResponse>> = await api.get(`/api/v1/search/pay-items?${queryParams}`);
+    return response.data;
+  }
 };
 
 export const disbursementsApi = {

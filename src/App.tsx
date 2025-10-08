@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Positions from './components/Positions';
 import Workers from './components/Workers';
 import Payroll from './components/Payroll';
+import PayItems from './components/PayItems';
 
 // Component to set up the session notification callback
 const SessionNotificationSetup = () => {
@@ -60,6 +61,14 @@ function App() {
                   <Payroll />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/pay-items"
+              element={
+                <ProtectedRoute>
+                  <PayItems />
+                </ProtectedRoute>
+              }
             />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>

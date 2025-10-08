@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { payrollApi } from '../services/api';
 import type { PayPeriod, CreatePayPeriodRequest, UpdatePayPeriodRequest, PayrollSearchParams } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 const PayrollManagement: React.FC = () => {
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const [payrolls, setPayrolls] = useState<PayPeriod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -551,6 +553,17 @@ const PayrollManagement: React.FC = () => {
                                   Edit
                                 </button>
                               </li>
+                              {(payroll.status === 'PENDING' || payroll.status === 'APPROVED') && (
+                                <li>
+                                  <button
+                                    className="dropdown-item d-flex align-items-center gap-2"
+                                    onClick={() => navigate(`/pay-items?periodUuid=${payroll.uuid}&label=${encodeURIComponent(payroll.label)}`)}
+                                  >
+                                    <Users size={14} />
+                                    View Workers
+                                  </button>
+                                </li>
+                              )}
                             </ul>
                           </div>
                         </div>
