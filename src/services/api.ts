@@ -277,6 +277,13 @@ export const payrollApi = {
       throw error;
     }
   },
+
+    createBatchFromPeriod: async (periodUuid: string): Promise<ApiResponse<{ batchUuid: string }>> => {
+    const response: AxiosResponse<ApiResponse<{ batchUuid: string }>> = await api.post(
+      `/api/v1/disbursements/from-period/${periodUuid}`
+    );
+    return response.data;
+  }
 };
 
 // Pay Items (workers assigned to a pay period)
@@ -298,36 +305,68 @@ export const payItemsApi = {
 };
 
 export const disbursementsApi = {
-  createBatchFromPeriod: async (periodUuid: string): Promise<ApiResponse<{ batchUuid: string }>> => {
+  
+  createSinglePayout: async (data: CreateSinglePayoutRequest): Promise<ApiResponse<{ batchUuid: string }>> => {
+    const { workerUuid, amount } = data;
+    let clientRef = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     const response: AxiosResponse<ApiResponse<{ batchUuid: string }>> = await api.post(
-      `/api/disbursements/from-period/${periodUuid}`
+      `/api/v1/disbursements/single?workerUuid=${workerUuid}&amount=${amount}&clientRef=${clientRef}`
     );
     return response.data;
   },
   
-  createSinglePayout: async (data: CreateSinglePayoutRequest): Promise<ApiResponse<{ batchUuid: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ batchUuid: string }>> = await api.post('/api/disbursements/single', data);
-    return response.data;
-  },
-  
   sendBatch: async (batchUuid: string): Promise<ApiResponse<{ status: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ status: string }>> = await api.post(`/api/disbursements/send/${batchUuid}`);
+    const response: AxiosResponse<ApiResponse<{ status: string }>> = await api.post(`/api/v1/disbursements/send/${batchUuid}`);
     return response.data;
   },
   
   getBatch: async (batchUuid: string): Promise<ApiResponse<DisbursementBatch>> => {
-    const response: AxiosResponse<ApiResponse<DisbursementBatch>> = await api.get(`/api/disbursements/${batchUuid}`);
+    const response: AxiosResponse<ApiResponse<DisbursementBatch>> = await api.get(`/api/v1/disbursements/${batchUuid}`);
     return response.data;
   },
   
   getBatchPayouts: async (batchUuid: string): Promise<ApiResponse<Payout[]>> => {
-    const response: AxiosResponse<ApiResponse<Payout[]>> = await api.get(`/api/disbursements/${batchUuid}/payouts`);
+    const response: AxiosResponse<ApiResponse<Payout[]>> = await api.get(`/api/v1/disbursements/${batchUuid}/payouts`);
     return response.data;
   },
   
   getPayout: async (payoutUuid: string): Promise<ApiResponse<Payout>> => {
-    const response: AxiosResponse<ApiResponse<Payout>> = await api.get(`/api/disbursements/payouts/${payoutUuid}`);
+    const response: AxiosResponse<ApiResponse<Payout>> = await api.get(`/api/v1/disbursements/payouts/${payoutUuid}`);
     return response.data;
+  },
+
+  getBatches: async (
+    page: number = 0,
+    size: number = 10,
+    sortBy: string = 'createdAt',
+    direction: string = 'DESC'
+  ): Promise<{
+    content: any[];
+    totalPages: number;
+    totalElements: number;
+  }> => {
+    const response = await api.get(
+      `/api/v1/disbursements/batches/search?page=${page}&size=${size}&sortBy=${sortBy}&direction=${direction}`
+    );
+    return response.data.data;
+  },
+
+  getPayouts: async (
+    page: number = 0,
+    size: number = 10,
+    sort: string = 'createdAt,DESC'
+  ): Promise<{
+    content: any[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+    first: boolean;
+    last: boolean;
+  }> => {
+    const response = await api.get(
+      `/api/v1/search/payouts?page=${page}&size=${size}&sort=${sort}`
+    );
+    return response.data.data;
   },
 };
 
