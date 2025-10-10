@@ -10,6 +10,9 @@ import Positions from './components/Positions';
 import Workers from './components/Workers';
 import Payroll from './components/Payroll';
 import PayItems from './components/PayItems';
+import SingleDisbursementPage from './components/SingleDisbursementPage';
+import BatchDisbursementPage from './components/BatchDisbursementPage';
+import PayoutsPage from './components/PayoutsPage';
 
 // Component to set up the session notification callback
 const SessionNotificationSetup = () => {
@@ -67,6 +70,31 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PayItems />
+                </ProtectedRoute>
+              }
+            />
+            {/* Add Disbursement routes below */}
+            <Route
+              path="/disbursement/single"
+              element={
+                <ProtectedRoute>
+                  <SingleDisbursementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/disbursement/batch"
+              element={
+                <ProtectedRoute>
+                  <BatchDisbursementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/disbursement/payouts"
+              element={
+                <ProtectedRoute>
+                  <PayoutsPage />
                 </ProtectedRoute>
               }
             />
