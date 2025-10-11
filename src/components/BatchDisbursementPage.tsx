@@ -157,7 +157,7 @@ const BatchDisbursementPage: React.FC = () => {
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
-                    <th>Batch UUID</th>
+                    <th>Source Type</th>
                     <th>Created</th>
                     <th>Payouts</th>
                     <th>Amount</th>
@@ -182,7 +182,9 @@ const BatchDisbursementPage: React.FC = () => {
                     draftOnly.map(b => (
                       <tr key={b.batchUuid}>
                         <td>
-                          <span className="font-monospace">{b.batchUuid}</span>
+                          <span className={`badge ${b.sourceType === 'SINGLE' ? 'bg-primary' : 'bg-info'}`}>
+                            {b.sourceType}
+                          </span>
                         </td>
                         <td>{new Date(b.createdAt).toLocaleString()}</td>
                         <td>{b.payoutCount}</td>

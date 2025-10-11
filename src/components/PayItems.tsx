@@ -3,7 +3,9 @@ import DashboardLayout from './DashboardLayout';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { payItemsApi, payrollApi } from '../services/api';
 import type { PayItem } from '../types';
-import { ChevronLeft, Download, RefreshCcw } from 'lucide-react';
+import KPICard from './KPICard';
+import { exportToExcel } from '../utils/excelExport';
+import { ChevronLeft, Download, RefreshCcw, Users, DollarSign, TrendingUp, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 
 const PayItems: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -20,6 +22,41 @@ const PayItems: React.FC = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [periodLabel, setPeriodLabel] = useState(periodLabelParam);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Calculate KPIs from current items
+  const calculateKPIs = () => {
+    const totalWorkers = items.length;
+    const totalGross = items.reduce((sum, item) => sum + item.grossAmount, 0);
+    const totalDeductions = items.reduce((sum, item) => sum + item.deductions, 0);
+    const totalNet = items.reduce((sum, item) => sum + item.netAmount, 0);
+    const averageGross = totalWorkers > 0 ? totalGross / totalWorkers : 0;
+
+    return {
+      totalWorkers,
+      totalGross,
+      totalDeductions,
+      totalNet,
+      averageGross
+    };
+  };
+
+  const handleExportToExcel = () => {
+    const data = items.map(item => ({
+      'Worker Name': item.workerName,
+      'Phone': item.workerPhone,
+      'Gross Amount': item.grossAmount,
+      'Deductions': item.deductions,
+      'Net Amount': item.netAmount,
+      'State': item.state,
+      'Created': new Date(item.createdAt).toLocaleDateString()
+    }));
+
+    exportToExcel({
+      data,
+      filename: `pay-items-${periodLabel || periodUuid}`,
+      sheetName: 'Pay Items'
+    });
+  };
 
   useEffect(() => {
     if (!periodUuid) return;
@@ -91,6 +128,9 @@ const PayItems: React.FC = () => {
           <h3 className="mb-0">Pay Items</h3>
           <span className="badge bg-info text-dark ms-2">Period: {periodLabel || periodUuid}</span>
           <div className="ms-auto d-flex gap-2">
+            <button className="btn btn-outline-info d-flex align-items-center" disabled={!items.length} onClick={handleExportToExcel}>
+              <FileSpreadsheet size={16} className="me-1" /> Export Excel
+            </button>
             <button className="btn btn-outline-success d-flex align-items-center" disabled={!items.length} onClick={handleDownload}>
               <Download size={16} className="me-1" /> Export Page CSV
             </button>
@@ -99,6 +139,40 @@ const PayItems: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* KPI Cards */}
+        {items.length > 0 && (() => {
+          const kpis = calculateKPIs();
+          return (
+            <div className="row g-4 mb-4">
+              <KPICard
+                title="Total Workers"
+                value={kpis.totalWorkers}
+                icon={Users}
+                color="primary"
+              />
+              <KPICard
+                title="Total Gross Pay"
+                value={`KES ${kpis.totalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                color="success"
+              />
+              <KPICard
+                title="Total Deductions"
+                value={`KES ${kpis.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={AlertTriangle}
+                color="warning"
+              />
+              <KPICard
+                title="Total Net Pay"
+                value={`KES ${kpis.totalNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle={`Avg: KES ${kpis.averageGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={TrendingUp}
+                color="info"
+              />
+            </div>
+          );
+        })()}
 
         {error && (
           <div className="alert alert-danger d-flex justify-content-between" role="alert">

@@ -1,4 +1,4 @@
-// API Response Types
+
 export interface ApiResponse<T> {
   success: boolean;
   responseCode: number;
@@ -129,7 +129,7 @@ export interface PayPeriod {
   uuid: string;
   label: string;
   frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'COMPLETED';
+  status: 'DRAFT' | 'PENDING' | 'APPROVED' | 'COMPLETED' | 'DISBURSING';
   startDate: string;
   endDate: string;
   createdAt?: string;
@@ -149,7 +149,7 @@ export interface UpdatePayPeriodRequest {
   frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
   startDate?: string;
   endDate?: string;
-  status?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'COMPLETED';
+  status?: 'DRAFT' | 'PENDING' | 'APPROVED' | 'DISBURSING' | 'COMPLETED';
 }
 
 export interface PayrollSearchParams {
@@ -265,6 +265,14 @@ export interface CreateSinglePayoutRequest {
 // Disbursement API Response Types
 export interface CreateBatchResponse {
   batchUuid: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceType: 'PERIOD' | 'SINGLE';
+  sourceRef: string;
+  status: 'DRAFT' | 'SENT' | 'COMPLETED';
+  payoutCount: number;
+  amountTotal: number;
+  payrollLabel?: string | null;
 }
 
 export interface SendBatchResponse {

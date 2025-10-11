@@ -16,7 +16,6 @@ import {
   Loader2,
   CreditCard,
   Package,
-  FileText,
   Banknote,
   UserCheck,
   UserPlus,

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { payrollApi, disbursementsApi } from '../services/api';
-import type { PayPeriod, CreatePayPeriodRequest, UpdatePayPeriodRequest, PayrollSearchParams } from '../types';
+import { payrollApi, disbursementsApi, kpiApi } from '../services/api';
+import type { PayPeriod, CreatePayPeriodRequest, UpdatePayPeriodRequest, PayrollSearchParams, PayPeriodsKPI } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
+import KPICard from './KPICard';
+import { exportToExcel } from '../utils/excelExport';
 import { 
   Search, 
   Plus, 
@@ -16,13 +18,15 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  DollarSign
+  DollarSign,
+  FileText
 } from 'lucide-react';
 
 const PayrollManagement: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [payrolls, setPayrolls] = useState<PayPeriod[]>([]);
+  const [payrollKPI, setPayrollKPI] = useState<PayPeriodsKPI | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -59,7 +63,19 @@ const PayrollManagement: React.FC = () => {
 
   useEffect(() => {
     fetchPayrolls();
+    loadPayrollKPI();
   }, [searchParams]);
+
+  const loadPayrollKPI = async () => {
+    try {
+      const response = await kpiApi.getPayPeriodsKPI();
+      if (response.success) {
+        setPayrollKPI(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading payroll KPI:', error);
+    }
+  };
 
   const fetchPayrolls = async () => {
     try {
@@ -79,6 +95,34 @@ const PayrollManagement: React.FC = () => {
       setError('Failed to fetch payrolls. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Export to Excel function
+  const handleExportToExcel = async () => {
+    try {
+      const exportData = payrolls.map(payroll => ({
+        'Label': payroll.label,
+        'Frequency': payroll.frequency,
+        'Status': payroll.status,
+        'Start Date': new Date(payroll.startDate).toLocaleDateString(),
+        'End Date': new Date(payroll.endDate).toLocaleDateString(),
+        'Created At': payroll.createdAt ? new Date(payroll.createdAt).toLocaleDateString() : 'N/A',
+        'Updated At': payroll.updatedAt ? new Date(payroll.updatedAt).toLocaleDateString() : 'N/A',
+        'Version': payroll.version || 'N/A',
+        'UUID': payroll.uuid
+      }));
+
+      await exportToExcel({
+        data: exportData,
+        filename: 'payroll_periods_export',
+        sheetName: 'Payroll Periods'
+      });
+
+      setSuccess('Payroll data exported successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (error) {
+      setError('Failed to export payroll data. Please try again.');
     }
   };
 
@@ -214,7 +258,7 @@ const PayrollManagement: React.FC = () => {
       
       const response = await disbursementsApi.createBatchFromPeriod(payroll.uuid);
       if (response.success) {
-        setSuccess(`Disbursement batch created successfully! Batch ID: ${response.data.batchUuid}`);
+        setSuccess(`Disbursement batch created successfully! Source Type: ${response.data.sourceType}`);
         setTimeout(() => setSuccess(null), 5000);
         // Optionally navigate to disbursements page
         // navigate('/disbursements');
@@ -376,6 +420,14 @@ const PayrollManagement: React.FC = () => {
             </div>
             <div className="d-flex gap-2">
               <button
+                className="btn btn-outline-success d-flex align-items-center"
+                onClick={handleExportToExcel}
+                disabled={loading || payrolls.length === 0}
+              >
+                <Download size={18} className="me-2" />
+                Export Excel
+              </button>
+              <button
                 className="btn btn-outline-primary d-flex align-items-center"
                 onClick={handleDownloadCSV}
                 disabled={downloadLoading}
@@ -401,6 +453,39 @@ const PayrollManagement: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* KPI Cards Section */}
+      {payrollKPI && (
+        <div className="row g-4 mb-4">
+          <KPICard
+            title="Total Periods"
+            value={payrollKPI.totalPeriods}
+            icon={Calendar}
+            color="primary"
+          />
+          <KPICard
+            title="Draft Periods"
+            value={payrollKPI.draftPeriods}
+            subtitle={`${payrollKPI.approvedPeriods} approved`}
+            icon={FileText}
+            color="warning"
+          />
+          <KPICard
+            title="Total Pay Items"
+            value={payrollKPI.totalItems}
+            subtitle={`${payrollKPI.itemsReady} ready`}
+            icon={Users}
+            color="info"
+          />
+          <KPICard
+            title="Net Amount"
+            value={`KES ${payrollKPI.totalNetAmount.toLocaleString()}`}
+            subtitle="Total net amount"
+            icon={DollarSign}
+            color="success"
+          />
+        </div>
+      )}
 
       {/* Alerts */}
       {error && (
@@ -611,7 +696,7 @@ const PayrollManagement: React.FC = () => {
                                   Edit
                                 </button>
                               </li>
-                              {(payroll.status === 'PENDING' || payroll.status === 'APPROVED') && (
+                              {(payroll.status === 'PENDING' || payroll.status === 'APPROVED' || payroll.status === 'DISBURSING' || payroll.status === 'COMPLETED') && (
                                 <li>
                                   <button
                                     className="dropdown-item d-flex align-items-center gap-2"
@@ -924,5 +1009,4 @@ const PayrollManagement: React.FC = () => {
     </div>
   );
 };
-
 export default PayrollManagement;

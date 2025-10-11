@@ -3,6 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { workersApi, positionsApi, kpiApi } from '../services/api';
 import KPICard from './KPICard';
 import type { Worker, Position, CreateWorkerRequest, WorkerSearchParams, PaginatedResponse, WorkersKPI } from '../types';
+import { exportToExcel } from '../utils/excelExport';
 import {
   Plus,
   Search,
@@ -20,7 +21,8 @@ import {
   ChevronRight,
   CheckCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 
 interface PaginationState {
@@ -168,6 +170,36 @@ const WorkersManagement: React.FC = () => {
   const handleSearch = () => {
     setSearchParams(prev => ({ ...prev, page: 0 }));
     searchWorkers();
+  };
+
+  // Export to Excel function
+  const handleExportToExcel = async () => {
+    try {
+      const exportData = workers.map(worker => ({
+        'Full Name': worker.fullName,
+        'Email': worker.email,
+        'Phone': worker.phone,
+        'Position': worker.positionName,
+        'Pay Frequency': worker.payFrequency,
+        'Rate (KES)': worker.rate,
+        'Status': worker.status,
+        'Payable': worker.payable ? 'Yes' : 'No',
+        'Team': worker.team || 'N/A',
+        'National ID': worker.nationalId || 'N/A',
+        'KRA PIN': worker.kraPin || 'N/A',
+        'UUID': worker.uuid
+      }));
+
+      await exportToExcel({
+        data: exportData,
+        filename: 'workers_export',
+        sheetName: 'Workers'
+      });
+
+      showSuccessMessage('Workers data exported successfully!');
+    } catch (error) {
+      setError('Failed to export workers data. Please try again.');
+    }
   };
 
   const handleCreateWorker = async (e: React.FormEvent) => {
@@ -430,14 +462,24 @@ const WorkersManagement: React.FC = () => {
             {pagination.totalElements} worker{pagination.totalElements === 1 ? '' : 's'} found
           </small>
         </div>
-        <button
-          className="btn btn-primary d-flex align-items-center gap-2"
-          onClick={() => setShowCreateModal(true)}
-          disabled={submitting}
-        >
-          <Plus size={20} />
-          Add Worker
-        </button>
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-outline-success d-flex align-items-center gap-2"
+            onClick={handleExportToExcel}
+            disabled={loading || workers.length === 0}
+          >
+            <Download size={20} />
+            Export Excel
+          </button>
+          <button
+            className="btn btn-primary d-flex align-items-center gap-2"
+            onClick={() => setShowCreateModal(true)}
+            disabled={submitting}
+          >
+            <Plus size={20} />
+            Add Worker
+          </button>
+        </div>
       </div>
 
       {/* Workers KPI Section */}

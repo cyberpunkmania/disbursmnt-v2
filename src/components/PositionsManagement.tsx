@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { positionsApi } from '../services/api';
 import type { Position, CreatePositionRequest, UpdatePositionRequest } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
-import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ChevronLeft, ChevronRight, MoreVertical, CheckCircle, Loader2, Briefcase, CheckSquare, XSquare, Users, Download } from 'lucide-react';
+import KPICard from './KPICard';
+import { exportToExcel } from '../utils/excelExport';
 
 interface PaginationData {
   currentPage: number;
@@ -108,6 +110,19 @@ const PositionsManagement: React.FC = () => {
     }
 
     return filtered;
+  };
+
+  const getPositionsKPIs = () => {
+    const totalPositions = allPositions.length;
+    const activePositions = allPositions.filter(p => p.active).length;
+    const inactivePositions = totalPositions - activePositions;
+    
+    return {
+      totalPositions,
+      activePositions,
+      inactivePositions,
+      activePercentage: totalPositions > 0 ? ((activePositions / totalPositions) * 100).toFixed(1) : 0
+    };
   };
 
   const getPaginatedPositions = () => {
@@ -280,19 +295,84 @@ const PositionsManagement: React.FC = () => {
 
   const displayedPositions = getPaginatedPositions();
 
+  // Export to Excel function
+  const handleExportToExcel = async () => {
+    try {
+      const exportData = allPositions.map(position => ({
+        'Position Name': position.name,
+        'Description': position.description,
+        'Status': position.active ? 'Active' : 'Inactive',
+        'UUID': position.uuid
+      }));
+
+      await exportToExcel({
+        data: exportData,
+        filename: 'positions_export',
+        sheetName: 'Positions'
+      });
+
+      showSuccessMessage('Positions data exported successfully!');
+    } catch (error) {
+      setError('Failed to export positions data. Please try again.');
+    }
+  };
+
   return (
     <div className="container-fluid p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="mb-0">Positions Management</h2>
-        <button
-          className="btn btn-primary d-flex align-items-center gap-2"
-          onClick={() => setShowModal(true)}
-          disabled={submitting}
-        >
-          <Plus size={20} />
-          Add Position
-        </button>
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-outline-success d-flex align-items-center gap-2"
+            onClick={handleExportToExcel}
+            disabled={loading || allPositions.length === 0}
+          >
+            <Download size={20} />
+            Export Excel
+          </button>
+          <button
+            className="btn btn-primary d-flex align-items-center gap-2"
+            onClick={() => setShowModal(true)}
+            disabled={submitting}
+          >
+            <Plus size={20} />
+            Add Position
+          </button>
+        </div>
       </div>
+
+      {/* KPI Cards Section */}
+      {!loading && (
+        <div className="row g-4 mb-4">
+          <KPICard
+            title="Total Positions"
+            value={getPositionsKPIs().totalPositions}
+            icon={Briefcase}
+            color="primary"
+          />
+          <KPICard
+            title="Active Positions"
+            value={getPositionsKPIs().activePositions}
+            subtitle={`${getPositionsKPIs().activePercentage}% of total`}
+            icon={CheckSquare}
+            color="success"
+          />
+          <KPICard
+            title="Inactive Positions"
+            value={getPositionsKPIs().inactivePositions}
+            subtitle={`${(100 - Number(getPositionsKPIs().activePercentage)).toFixed(1)}% of total`}
+            icon={XSquare}
+            color="warning"
+          />
+          <KPICard
+            title="Most Used"
+            value="—"
+            subtitle="Coming soon"
+            icon={Users}
+            color="info"
+          />
+        </div>
+      )}
 
       {/* Success Message */}
       {successMessage && (
