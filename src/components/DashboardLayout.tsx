@@ -18,7 +18,12 @@ import {
   Settings,
   Moon,
   Sun,
-  BarChart3
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -29,25 +34,54 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
+  const [disbursementsOpen, setDisbursementsOpen] = useState(true);
 
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Close mobile sidebar when resizing to desktop
+      if (!mobile) {
+        setShowMobileSidebar(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Call on mount
+    
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const toggleSidebar = () => setSidebarCollapsed(s => !s);
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setShowMobileSidebar(false);
+    }
+  }, [location.pathname, isMobile]);
+
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setShowMobileSidebar(!showMobileSidebar);
+    } else {
+      setSidebarCollapsed(!sidebarCollapsed);
+    }
+  };
 
   const sidebarItems = [
     { label: 'Dashboard', path: '/dashboard', icon: Home },
     { label: 'Positions', path: '/positions', icon: Briefcase },
     { label: 'Workers', path: '/workers', icon: Users },
     { label: 'Payroll', path: '/payroll', icon: Calendar }
-    // Disbursements and Analytics handled separately to allow submenu/order control
+  ];
+
+  const disbursementItems = [
+    { label: 'Single Payout', path: '/disbursement/single', icon: Send },
+    { label: 'Batch Creation', path: '/disbursement/batch', icon: Plus },
+    { label: 'Payouts', path: '/disbursement/payouts', icon: CreditCard }
   ];
 
   return (
-    <div className="d-flex" style={{ minHeight: '100vh' }}>
+    <div className={`dashboard-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
       {/* Mobile Overlay */}
       {isMobile && showMobileSidebar && (
         <div 
@@ -58,182 +92,205 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
       {/* Sidebar */}
       <aside
-        className={`sidebar border-end ${isDarkMode ? 'bg-dark text-white' : 'bg-white text-dark'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${isMobile && showMobileSidebar ? 'show' : ''}`}
-        style={{ width: sidebarCollapsed ? 64 : 240 }}
+        className={`sidebar ${isDarkMode ? 'sidebar-dark' : 'sidebar-light'} 
+          ${!isMobile && sidebarCollapsed ? 'sidebar-collapsed' : ''} 
+          ${isMobile ? 'sidebar-mobile' : ''} 
+          ${isMobile && showMobileSidebar ? 'show' : ''}`}
       >
-        <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
-          {!sidebarCollapsed && <div className={`fw-bold ${isDarkMode ? 'text-white' : 'text-dark'}`}>Boker</div>}
-          <div className="d-flex align-items-center gap-2">
-            <button className="btn btn-sm btn-outline-secondary" onClick={toggleSidebar} aria-label="Toggle sidebar">
-              {sidebarCollapsed ? <Menu size={18} /> : <Menu size={18} />}
-            </button>
+        {/* Sidebar Header */}
+        <div className="sidebar-header">
+          {(!sidebarCollapsed || isMobile) && (
+            <div className="sidebar-brand">Boker</div>
+          )}
+          <div className="sidebar-header-actions">
+            {!isMobile && (
+              <button 
+                className="btn-sidebar-toggle"
+                onClick={toggleSidebar} 
+                aria-label="Toggle sidebar"
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              </button>
+            )}
+            {isMobile && (
+              <button 
+                className="btn-sidebar-close"
+                onClick={() => setShowMobileSidebar(false)} 
+                aria-label="Close sidebar"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
         </div>
 
-        <nav className="mt-3">
-          {sidebarItems.map((item, index) => {
+        {/* Navigation */}
+        <nav className="sidebar-nav">
+          {sidebarItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
             return (
               <Link
-                key={index}
+                key={item.path}
                 to={item.path}
-                className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${isActive ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                title={sidebarCollapsed ? item.label : ''}
-                onClick={() => isMobile && setShowMobileSidebar(false)}
+                className={`sidebar-item ${isActive ? 'active' : ''}`}
+                title={sidebarCollapsed && !isMobile ? item.label : ''}
               >
-                <Icon size={20} />
-                {!sidebarCollapsed && <span className="ms-3">{item.label}</span>}
+                <Icon size={20} className="sidebar-icon" />
+                {(!sidebarCollapsed || isMobile) && (
+                  <span className="sidebar-label">{item.label}</span>
+                )}
               </Link>
             );
           })}
 
-          {/* Disbursements (single top-level with submenu) */}
-          {!sidebarCollapsed ? (
-            <div className="mt-2">
-              <div className="bg-transparent border-0">
-                <h2 className="mb-0">
-                  <button
-                    className="accordion-button accordion-button-sidebar"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#disbursementCollapse"
-                    aria-expanded="true"
-                    aria-controls="disbursementCollapse"
-                  >
-                    <DollarSign size={20} className="me-2" />
-                    <span>Disbursements</span>
-                  </button>
-                </h2>
-                <div id="disbursementCollapse" className="accordion-collapse collapse show" aria-labelledby="disbursementHeading">
-                  <div className="p-0">
-                    <Link
-                      to="/disbursement/single"
-                      className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/single' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                      onClick={() => isMobile && setShowMobileSidebar(false)}
-                    >
-                      <Send size={16} className="me-2" />
-                      <span>Single Payout</span>
-                    </Link>
-
-                    <Link
-                      to="/disbursement/batch"
-                      className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/batch' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                      onClick={() => isMobile && setShowMobileSidebar(false)}
-                    >
-                      <Plus size={16} className="me-2" />
-                      <span>Batch Creation</span>
-                    </Link>
-
-                    <Link
-                      to="/disbursement/payouts"
-                      className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/payouts' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                      onClick={() => isMobile && setShowMobileSidebar(false)}
-                    >
-                      <CreditCard size={16} className="me-2" />
-                      <span>Payouts</span>
-                    </Link>
+          {/* Disbursements Section */}
+          <div className="disbursements-section">
+            {(!sidebarCollapsed || isMobile) ? (
+              <div className="sidebar-accordion">
+                <button
+                  className="sidebar-item accordion-toggle"
+                  onClick={() => setDisbursementsOpen(!disbursementsOpen)}
+                  type="button"
+                >
+                  <DollarSign size={20} className="sidebar-icon" />
+                  <span className="sidebar-label">Disbursements</span>
+                  {disbursementsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                
+                {disbursementsOpen && (
+                  <div className="accordion-content">
+                    {disbursementItems.map((item) => {
+                      const isActive = location.pathname === item.path;
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`sidebar-item sidebar-subitem ${isActive ? 'active' : ''}`}
+                        >
+                          <Icon size={16} className="sidebar-icon" />
+                          <span className="sidebar-label">{item.label}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          ) : (
-            /* Collapsed disbursement items - show as individual icons */
-            <>
-              <Link
-                to="/disbursement/single"
-                className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/disbursement/single' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                title="Single Payout"
-                onClick={() => isMobile && setShowMobileSidebar(false)}
-              >
-                <Send size={20} />
-              </Link>
+            ) : (
+              /* Collapsed disbursement items */
+              <>
+                {disbursementItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`sidebar-item ${isActive ? 'active' : ''}`}
+                      title={item.label}
+                    >
+                      <Icon size={20} className="sidebar-icon" />
+                    </Link>
+                  );
+                })}
+              </>
+            )}
+          </div>
 
-              <Link
-                to="/disbursement/batch"
-                className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/disbursement/batch' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                title="Batch Creation"
-                onClick={() => isMobile && setShowMobileSidebar(false)}
-              >
-                <Plus size={20} />
-              </Link>
-
-              <Link
-                to="/disbursement/payouts"
-                className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/disbursement/payouts' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-                title="Payouts"
-                onClick={() => isMobile && setShowMobileSidebar(false)}
-              >
-                <CreditCard size={20} />
-              </Link>
-            </>
-          )}
-
-          {/* Analytics (below Disbursements) */}
+          {/* Analytics */}
           <Link
             to="/analytics"
-            className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/analytics' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-            title={sidebarCollapsed ? 'Analytics' : ''}
-            onClick={() => isMobile && setShowMobileSidebar(false)}
+            className={`sidebar-item ${location.pathname === '/analytics' ? 'active' : ''}`}
+            title={sidebarCollapsed && !isMobile ? 'Analytics' : ''}
           >
-            <BarChart3 size={20} />
-            {!sidebarCollapsed && <span className="ms-3">Analytics</span>}
+            <BarChart3 size={20} className="sidebar-icon" />
+            {(!sidebarCollapsed || isMobile) && (
+              <span className="sidebar-label">Analytics</span>
+            )}
           </Link>
 
           {/* Settings */}
           <Link
             to="/settings"
-            className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/settings' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
-            title={sidebarCollapsed ? 'Settings' : ''}
-            onClick={() => isMobile && setShowMobileSidebar(false)}
+            className={`sidebar-item ${location.pathname === '/settings' ? 'active' : ''}`}
+            title={sidebarCollapsed && !isMobile ? 'Settings' : ''}
           >
-            <Settings size={20} />
-            {!sidebarCollapsed && <span className="ms-3">Settings</span>}
+            <Settings size={20} className="sidebar-icon" />
+            {(!sidebarCollapsed || isMobile) && (
+              <span className="sidebar-label">Settings</span>
+            )}
           </Link>
         </nav>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-grow-1 d-flex flex-column">
+      {/* Main Content Wrapper */}
+      <div className={`main-wrapper ${!isMobile && sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {/* Header */}
-        <header className={`shadow-sm border-bottom p-3 ${isDarkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
-          <div className="d-flex justify-content-between align-items-center">
-            <div className="d-flex align-items-center">
+        <header className={`main-header ${isDarkMode ? 'header-dark' : 'header-light'}`}>
+          <div className="header-content">
+            <div className="header-left">
               {isMobile && (
                 <button
-                  className={`btn btn-outline-secondary me-3 ${isDarkMode ? 'btn-outline-light' : 'btn-outline-secondary'}`}
-                  onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-                  title="Toggle sidebar"
+                  className="btn-mobile-menu"
+                  onClick={toggleSidebar}
+                  aria-label="Toggle menu"
                 >
-                  <Menu size={18} />
+                  <Menu size={20} />
                 </button>
               )}
-              <h4 className={`mb-0 fw-semibold ${isDarkMode ? 'text-white' : 'text-dark'}`}>Dashboard</h4>
+              <h4 className="header-title">Dashboard</h4>
             </div>
 
-            <div className="d-flex align-items-center gap-3">
-              <div className="position-relative d-none d-md-block">
-                <Search className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" size={16} />
-                <input type="text" placeholder="Search..." className="form-control ps-5 search-input" />
+            <div className="header-right">
+              {/* Search - Hidden on mobile */}
+              <div className="search-wrapper d-none d-md-block">
+                <Search className="search-icon" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search..." 
+                  className={`search-input ${isDarkMode ? 'search-dark' : 'search-light'}`}
+                />
               </div>
 
-              <button className={`btn ${isDarkMode ? 'btn-outline-light' : 'btn-outline-secondary'}`} onClick={toggleTheme} title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
+              {/* Theme Toggle */}
+              <button 
+                className="btn-icon"
+                onClick={toggleTheme} 
+                title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+              >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              <button className={`btn ${isDarkMode ? 'btn-outline-light' : 'btn-outline-secondary'} position-relative`} title="Notifications">
+              {/* Notifications */}
+              <button 
+                className="btn-icon notification-btn"
+                title="Notifications"
+              >
                 <Bell size={18} />
-                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">3</span>
+                <span className="notification-badge">3</span>
               </button>
 
+              {/* User Dropdown */}
               <div className="dropdown">
-                <button className={`btn ${isDarkMode ? 'btn-outline-light' : 'btn-outline-secondary'} dropdown-toggle d-flex align-items-center gap-2`} type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <div className="text-end d-none d-md-block">
-                    <div className={`fw-medium small ${isDarkMode ? 'text-white' : 'text-dark'}`}>{user?.sub?.split('@')[0]}</div>
-                    <div className="text-muted text-xs">{user?.role}</div>
+                <button 
+                  className="btn-user dropdown-toggle"
+                  type="button" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                >
+                  <div className="user-avatar">
+                    {user?.sub?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="user-info d-none d-lg-block">
+                    <div className="user-name">
+                      {user?.sub?.split('@')[0]}
+                    </div>
+                    <div className="user-role">{user?.role}</div>
                   </div>
                 </button>
-                <ul className="dropdown-menu dropdown-menu-end">
+                <ul className={`dropdown-menu dropdown-menu-end ${isDarkMode ? 'dropdown-menu-dark' : ''}`}>
                   <li><a className="dropdown-item" href="#profile">Profile</a></li>
                   <li><a className="dropdown-item" href="#settings">Settings</a></li>
                   <li><hr className="dropdown-divider" /></li>
@@ -250,7 +307,9 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </header>
 
         {/* Main Content Area */}
-        <main className={`flex-grow-1 p-4 overflow-auto ${isDarkMode ? 'bg-dark' : 'bg-light'}`}>{children}</main>
+        <main className={`main-content ${isDarkMode ? 'content-dark' : 'content-light'}`}>
+          {children}
+        </main>
       </div>
     </div>
   );

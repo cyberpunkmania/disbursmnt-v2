@@ -385,9 +385,9 @@ const PositionsManagement: React.FC = () => {
               <thead className={`table-${theme === 'dark' ? 'dark' : 'light'}`}>
                 <tr>
                   <th>Name</th>
-                  <th>Description</th>
+                  <th className="d-none-mobile">Description</th>
                   <th>Status</th>
-                  <th>Created Date</th>
+                  <th className="d-none-mobile">Created Date</th>
                   <th className="col-1">Actions</th>
                 </tr>
               </thead>
@@ -427,14 +427,14 @@ const PositionsManagement: React.FC = () => {
                 ) : (
                   displayedPositions.map((position) => (
                     <tr key={position.uuid}>
-                      <td className="fw-medium">{position.name}</td>
-                      <td>{position.description}</td>
+                      <td className="fw-medium break-anywhere">{position.name}</td>
+                      <td className="d-none-mobile break-anywhere">{position.description}</td>
                       <td>
                         <span className={`badge ${position.active ? 'bg-success' : 'bg-secondary'}`}>
                           {position.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td>
+                      <td className="d-none-mobile">
                         {new Date().toLocaleDateString()}
                       </td>
                       <td>

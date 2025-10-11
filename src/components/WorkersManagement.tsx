@@ -673,11 +673,11 @@ const WorkersManagement: React.FC = () => {
               <thead className={`table-${theme === 'dark' ? 'dark' : 'light'}`}>
                 <tr>
                   <th>Worker</th>
-                  <th>Contact</th>
+                  <th className="d-none-mobile">Contact</th>
                   <th>Position</th>
-                  <th>Pay Info</th>
+                  <th className="d-none-mobile">Pay Info</th>
                   <th>Status</th>
-                  <th>Team</th>
+                  <th className="d-none-mobile">Team</th>
                   <th className="col-1">Actions</th>
                 </tr>
               </thead>
@@ -715,30 +715,30 @@ const WorkersManagement: React.FC = () => {
                 ) : (
                   workers.map((worker) => (
                     <tr key={worker.uuid}>
-                      <td>
+                      <td className="break-anywhere">
                         <div>
-                          <div className="fw-medium">{worker.fullName}</div>
+                          <div className="fw-medium break-anywhere">{worker.fullName}</div>
                           {worker.nationalId && (
-                            <small className="text-muted">ID: {worker.nationalId}</small>
+                            <small className="text-muted break-anywhere">ID: {worker.nationalId}</small>
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td className="d-none-mobile break-anywhere">
                         <div>
-                          <div className="d-flex align-items-center gap-1 mb-1">
+                          <div className="d-flex align-items-center gap-1 mb-1 break-anywhere">
                             <Mail size={14} />
-                            <small>{worker.email}</small>
+                            <small className="break-anywhere">{worker.email}</small>
                           </div>
-                          <div className="d-flex align-items-center gap-1">
+                          <div className="d-flex align-items-center gap-1 break-anywhere">
                             <Phone size={14} />
-                            <small>{worker.phone}</small>
+                            <small className="break-anywhere">{worker.phone}</small>
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td className="break-anywhere">
                         <span className="badge bg-light text-dark">{worker.positionName}</span>
                       </td>
-                      <td>
+                      <td className="d-none-mobile">
                         <div>
                           <div className="d-flex align-items-center gap-1 mb-1">
                             <DollarSign size={14} />
@@ -758,11 +758,11 @@ const WorkersManagement: React.FC = () => {
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td className="d-none-mobile break-anywhere">
                         {worker.team && (
                           <div className="d-flex align-items-center gap-1">
                             <MapPin size={14} />
-                            <span>{worker.team}</span>
+                            <span className="break-anywhere">{worker.team}</span>
                           </div>
                         )}
                       </td>
