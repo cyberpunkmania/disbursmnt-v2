@@ -83,7 +83,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </div>
         
         <nav className="mt-3">
-          {sidebarItems.map((item, index) => {
+          {sidebarItems.slice(0, 4).map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
@@ -100,6 +100,69 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
               </Link>
             );
           })}
+
+          {/* Disbursement Accordion */}
+          <div className="accordion mt-2" id="disbursementAccordion">
+            <div className="accordion-item bg-transparent border-0">
+              <h2 className="accordion-header" id="disbursementHeading">
+                <button
+                  className={`accordion-button ${sidebarCollapsed ? 'collapsed' : ''} ${isDarkMode ? 'bg-dark text-white' : 'bg-light text-dark'}`}
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#disbursementCollapse"
+                  aria-expanded="true"
+                  aria-controls="disbursementCollapse"
+                  style={{ boxShadow: 'none', paddingLeft: '1rem' }}
+                >
+                  <DollarSign size={20} className="me-2" />
+                  {!sidebarCollapsed && <span>Disbursement</span>}
+                </button>
+              </h2>
+              <div
+                id="disbursementCollapse"
+                className="accordion-collapse collapse show"
+                aria-labelledby="disbursementHeading"
+                data-bs-parent="#disbursementAccordion"
+              >
+                <div className="accordion-body p-0">
+                  <Link
+                    to="/disbursement/single"
+                    className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/single' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
+                    onClick={() => isMobile && setShowMobileSidebar(false)}
+                  >
+                    {!sidebarCollapsed && <span>Single</span>}
+                  </Link>
+                  <Link
+                    to="/disbursement/batch"
+                    className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/batch' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
+                    onClick={() => isMobile && setShowMobileSidebar(false)}
+                  >
+                    {!sidebarCollapsed && <span>Batch</span>}
+                  </Link>
+                  <Link
+                    to="/disbursement/payouts"
+                    className={`d-flex align-items-center p-3 ps-5 text-decoration-none sidebar-item ${location.pathname === '/disbursement/payouts' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
+                    onClick={() => isMobile && setShowMobileSidebar(false)}
+                  >
+                    {!sidebarCollapsed && <span>Payouts</span>}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Settings */}
+          <Link
+            to="/settings"
+            className={`d-flex align-items-center p-3 text-decoration-none sidebar-item ${location.pathname === '/settings' ? 'active' : ''} ${isDarkMode ? 'text-white' : 'text-dark'}`}
+            title={sidebarCollapsed ? 'Settings' : ''}
+            onClick={() => isMobile && setShowMobileSidebar(false)}
+          >
+            <Settings size={20} />
+            {!sidebarCollapsed && (
+              <span className="ms-3">Settings</span>
+            )}
+          </Link>
         </nav>
       </div>
 

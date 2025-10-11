@@ -334,6 +334,23 @@ const PayrollManagement: React.FC = () => {
     setSearchParams({ ...searchParams, page: newPage });
   };
 
+  const handleCreateBatch = async (payroll: PayPeriod) => {
+    try {
+      setSuccess(null);
+      setError(null);
+      // Optionally show loading spinner for this payroll
+      const response = await payrollApi.createBatchFromPeriod(payroll.uuid);
+      if (response.success) {
+        setSuccess('Batch created successfully!');
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.message || 'Failed to create batch');
+      }
+    } catch (error: any) {
+      setError('Failed to create batch. Please try again.');
+    }
+  };
+
   if (loading && payrolls.length === 0) {
     return (
       <div className="d-flex justify-content-center align-items-center min-vh-25">
@@ -561,6 +578,17 @@ const PayrollManagement: React.FC = () => {
                                   Approve
                                 </>
                               )}
+                            </button>
+                          )}
+                          
+                          {payroll.status === 'APPROVED' && (
+                            <button
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => handleCreateBatch(payroll)}
+                              title="Create Batch"
+                            >
+                              <Plus size={14} className="me-1" />
+                              Create Batch
                             </button>
                           )}
                           
