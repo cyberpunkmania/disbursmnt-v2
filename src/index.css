@@ -166,6 +166,34 @@ body {
   z-index: 1000;
 }
 
+.sidebar.bg-white {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+.sidebar.bg-dark {
+  background-color: #212529 !important;
+  color: #ffffff !important;
+}
+
+.accordion-button-sidebar {
+  box-shadow: none !important;
+  padding-left: 1rem !important;
+  border: none !important;
+  background-color: transparent !important;
+}
+
+.accordion-button-sidebar:not(.collapsed) {
+  color: inherit !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+.accordion-button-sidebar:focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .sidebar-collapsed {
   width: 70px;
 }
@@ -177,18 +205,30 @@ body {
   white-space: nowrap;
 }
 
-.sidebar-item:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+/* Active/Selected state - Blue for both light and dark mode */
+.sidebar-item.active {
+  background-color: #0d6efd !important;
   color: white !important;
 }
 
-.sidebar-item.active {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
+/* Ensure icons and text remain visible */
+.sidebar-item svg,
+.sidebar-item span {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline !important;
+}
+
+/* Remove hover effects - keep only link styling */
+.sidebar-item:link,
+.sidebar-item:visited,
+.sidebar-item:active {
+  text-decoration: none !important;
 }
 
 .sidebar-collapsed .sidebar-item {
   justify-content: center;
+  margin: 0.25rem 0.5rem;
 }
 
 .sidebar-collapsed .sidebar-item span {

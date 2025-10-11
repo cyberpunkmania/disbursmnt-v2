@@ -11,7 +11,6 @@ import Positions from './components/Positions';
 import Workers from './components/Workers';
 import Payroll from './components/Payroll';
 import PayItems from './components/PayItems';
-import DisbursementManagement from './components/DisbursementManagement';
 import SingleDisbursementPage from './components/SingleDisbursementPage';
 import BatchDisbursementPage from './components/BatchDisbursementPage';
 import PayoutsPage from './components/PayoutsPage';
@@ -80,14 +79,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PayItems />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/disbursements"
-              element={
-                <ProtectedRoute>
-                  <DisbursementManagement />
                 </ProtectedRoute>
               }
             />

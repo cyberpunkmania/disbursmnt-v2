@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { kpiApi } from '../services/api';
+import DashboardLayout from './DashboardLayout';
 import type { WorkersKPI, PayoutsKPI, PayItemsKPI, PayPeriodsKPI } from '../types';
 import { 
   BarChart, 
@@ -118,29 +119,34 @@ const Analytics: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center py-5">
-        <div className="text-center">
-          <Loader2 className="spinner-border text-primary" size={48} />
-          <p className="mt-3 text-muted">Loading analytics data...</p>
+      <DashboardLayout>
+        <div className="d-flex justify-content-center align-items-center py-5">
+          <div className="text-center">
+            <Loader2 className="spinner-border text-primary" size={48} />
+            <p className="mt-3 text-muted">Loading analytics data...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger d-flex align-items-center" role="alert">
-        <AlertTriangle className="me-2" size={20} />
-        {error}
-        <button className="btn btn-sm btn-outline-danger ms-auto" onClick={loadAnalyticsData}>
-          Retry
-        </button>
-      </div>
+      <DashboardLayout>
+        <div className="alert alert-danger d-flex align-items-center" role="alert">
+          <AlertTriangle className="me-2" size={20} />
+          {error}
+          <button className="btn btn-sm btn-outline-danger ms-auto" onClick={loadAnalyticsData}>
+            Retry
+          </button>
+        </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container-fluid py-4">
+    <DashboardLayout>
+      <div className="container-fluid py-4">
       {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <div className="mb-3 mb-md-0">
@@ -365,7 +371,8 @@ const Analytics: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 

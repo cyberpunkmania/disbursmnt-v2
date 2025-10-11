@@ -45,7 +45,6 @@ const DashboardContent: React.FC = () => {
     payPeriods: null
   });
 
-  // Sample activity data - in real app, this would come from API
   const recentActivity = [
     {
       id: 1,
@@ -85,7 +84,6 @@ const DashboardContent: React.FC = () => {
     }
   ];
 
-  // Sample system status data - in real app, this would come from API
   const systemStatus = [
     {
       id: 1,
@@ -133,7 +131,7 @@ const DashboardContent: React.FC = () => {
     {
       icon: DollarSign,
       label: 'Process Disbursement',
-      path: '/disbursements',
+      path: '/disbursement/single',
       color: 'warning'
     },
     {
@@ -233,7 +231,7 @@ const DashboardContent: React.FC = () => {
 
   return (
     <div>
-      {/* Welcome Section */}
+      {/* Header Section */}
       <div className="mb-4">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
           <div className="mb-3 mb-md-0">
@@ -241,6 +239,10 @@ const DashboardContent: React.FC = () => {
             <p className="text-muted mb-0">Real-time disbursement management overview</p>
           </div>
           <div className="d-flex flex-wrap gap-2">
+            <button className="btn btn-outline-secondary btn-sm" onClick={loadKPIData}>
+              <TrendingUp size={16} className="me-1" />
+              Refresh
+            </button>
             <button className="btn btn-outline-primary btn-sm" onClick={downloadWorkersKPI}>
               <Download size={16} className="me-1" />
               Workers CSV
@@ -249,44 +251,277 @@ const DashboardContent: React.FC = () => {
               <Download size={16} className="me-1" />
               Pay Periods CSV
             </button>
-            <button className="btn btn-outline-secondary btn-sm" onClick={loadKPIData}>
-              <TrendingUp size={16} className="me-1" />
-              Refresh
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Top Row: Quick Actions, Recent Activity, System Status */}
+      {/* Key Metrics Summary */}
       <div className="row g-4 mb-4">
-        {/* Quick Actions */}
-        <div className="col-12 col-md-6 col-lg-4">
-          <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+        {workers && (
+          <>
+            <KPICard
+              title="Total Workers"
+              value={workers.totalWorkers}
+              subtitle={`${workers.activeWorkers} active`}
+              icon={Users}
+              color="primary"
+            />
+            <KPICard
+              title="Payable Workers"
+              value={workers.payableWorkers}
+              subtitle={`${((workers.payableWorkers / workers.totalWorkers) * 100).toFixed(1)}% of total`}
+              icon={CreditCard}
+              color="info"
+            />
+          </>
+        )}
+        {payouts && (
+          <>
+            <KPICard
+              title="Total Payouts"
+              value={payouts.total}
+              subtitle={`KES ${payouts.totalAmount.toLocaleString()}`}
+              icon={DollarSign}
+              color="success"
+            />
+            <KPICard
+              title="Success Rate"
+              value={`${((payouts.success / payouts.total) * 100).toFixed(1)}%`}
+              subtitle={`${payouts.success} successful`}
+              icon={CheckCircle}
+              color="success"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Quick Actions Section */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
             <div className="card-header bg-primary bg-opacity-10">
-              <h6 className="mb-0 fw-bold text-primary">
+              <h6 className="mb-0 fw-bold text-primary d-flex align-items-center">
                 <Activity size={16} className="me-2" />
                 Quick Actions
               </h6>
             </div>
             <div className="card-body">
-              <div className="d-grid gap-2">
+              <div className="row g-3">
                 {quickActions.map((action, index) => (
-                  <button
-                    key={index}
-                    className={`btn btn-outline-${action.color} btn-sm d-flex align-items-center justify-content-start text-start`}
-                    onClick={() => navigate(action.path)}
-                  >
-                    <action.icon size={16} className="me-2 flex-shrink-0" />
-                    <span className="flex-grow-1">{action.label}</span>
-                  </button>
+                  <div key={index} className="col-12 col-sm-6 col-lg-3">
+                    <button
+                      className={`btn btn-outline-${action.color} w-100 d-flex align-items-center justify-content-center py-3`}
+                      onClick={() => navigate(action.path)}
+                    >
+                      <action.icon size={20} className="me-2" />
+                      <span>{action.label}</span>
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Workers Section */}
+      {workers && (
+        <div className="mb-4">
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div className="d-flex align-items-center">
+              <Users className="me-2 text-primary" size={24} />
+              <h5 className="mb-0 fw-bold">Workers Overview</h5>
+            </div>
+            <button 
+              className="btn btn-sm btn-outline-primary"
+              onClick={() => navigate('/workers')}
+            >
+              View All Workers
+            </button>
+          </div>
+
+          <div className="row g-4 mb-3">
+            <KPICard
+              title="Active Workers"
+              value={workers.activeWorkers}
+              subtitle={`${workers.inactiveWorkers} inactive`}
+              icon={UserCheck}
+              color="success"
+            />
+            <KPICard
+              title="Daily Workers"
+              value={workers.byFrequencyActive.daily}
+              subtitle="Active daily workers"
+              icon={Calendar}
+              color="primary"
+            />
+            <KPICard
+              title="Weekly Workers"
+              value={workers.byFrequencyActive.weekly}
+              subtitle="Active weekly workers"
+              icon={Calendar}
+              color="info"
+            />
+            <KPICard
+              title="Monthly Workers"
+              value={workers.byFrequencyActive.monthly}
+              subtitle="Active monthly workers"
+              icon={Calendar}
+              color="success"
+            />
+          </div>
+
+          {workers.kycGaps > 0 && (
+            <div className="alert alert-warning d-flex align-items-center" role="alert">
+              <AlertTriangle className="me-2" size={20} />
+              <div>
+                <strong>{workers.kycGaps} workers</strong> have incomplete KYC information. 
+                <span className="ms-2">Phone validation: {workers.phoneValidPct.toFixed(1)}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payouts Section */}
+      {payouts && (
+        <div className="mb-4">
+          <div className="d-flex align-items-center justify-content-between mb-3">
+            <div className="d-flex align-items-center">
+              <Banknote className="me-2 text-success" size={24} />
+              <h5 className="mb-0 fw-bold">Payouts Overview</h5>
+            </div>
+            <button 
+              className="btn btn-sm btn-outline-success"
+              onClick={() => navigate('/disbursement/payouts')}
+            >
+              View All Payouts
+            </button>
+          </div>
+
+          <div className="row g-4">
+            <KPICard
+              title="Successful Payouts"
+              value={payouts.success}
+              subtitle={`KES ${payouts.successAmount.toLocaleString()}`}
+              icon={CheckCircle}
+              color="success"
+            />
+            <KPICard
+              title="Pending Payouts"
+              value={payouts.pending}
+              subtitle="Awaiting processing"
+              icon={Clock}
+              color="warning"
+            />
+            <KPICard
+              title="Failed Payouts"
+              value={payouts.failed}
+              subtitle="Requires attention"
+              icon={AlertTriangle}
+              color="danger"
+            />
+            <KPICard
+              title="Total Amount"
+              value={`KES ${payouts.totalAmount.toLocaleString()}`}
+              subtitle={`${payouts.total} total payouts`}
+              icon={DollarSign}
+              color="primary"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Pay Periods & Items Section */}
+      <div className="row g-4 mb-4">
+        {payPeriods && (
+          <div className="col-12 col-lg-6">
+            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <div className="d-flex align-items-center">
+                  <Calendar className="me-2 text-info" size={20} />
+                  <h6 className="mb-0 fw-bold">Pay Periods</h6>
+                </div>
+                <button 
+                  className="btn btn-sm btn-outline-info"
+                  onClick={() => navigate('/payroll')}
+                >
+                  Manage
+                </button>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-4 text-center">
+                    <h3 className="text-primary mb-1">{payPeriods.totalPeriods}</h3>
+                    <small className="text-muted">Total Periods</small>
+                  </div>
+                  <div className="col-4 text-center">
+                    <h3 className="text-success mb-1">{payPeriods.approvedPeriods}</h3>
+                    <small className="text-muted">Approved</small>
+                  </div>
+                  <div className="col-4 text-center">
+                    <h3 className="text-info mb-1">
+                      {(payPeriods.totalNetAmount / 1000).toFixed(0)}K
+                    </h3>
+                    <small className="text-muted">Net Amount (KES)</small>
+                  </div>
+                </div>
+                <hr className="my-3" />
+                <div className="row g-2">
+                  <div className="col-4 text-center">
+                    <div className="badge bg-primary bg-opacity-15 text-primary w-100 py-2">
+                      <div className="fw-bold">{payPeriods.byFrequency.counts.DAILY}</div>
+                      <small>Daily</small>
+                    </div>
+                  </div>
+                  <div className="col-4 text-center">
+                    <div className="badge bg-success bg-opacity-15 text-success w-100 py-2">
+                      <div className="fw-bold">{payPeriods.byFrequency.counts.WEEKLY}</div>
+                      <small>Weekly</small>
+                    </div>
+                  </div>
+                  <div className="col-4 text-center">
+                    <div className="badge bg-info bg-opacity-15 text-info w-100 py-2">
+                      <div className="fw-bold">{payPeriods.byFrequency.counts.MONTHLY}</div>
+                      <small>Monthly</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {payItems && (
+          <div className="col-12 col-lg-6">
+            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+              <div className="card-header">
+                <div className="d-flex align-items-center">
+                  <Package className="me-2 text-warning" size={20} />
+                  <h6 className="mb-0 fw-bold">Pay Items</h6>
+                </div>
+              </div>
+              <div className="card-body d-flex align-items-center justify-content-center">
+                <div className="row w-100">
+                  <div className="col-6 text-center">
+                    <h2 className="text-primary mb-2">{payItems.total}</h2>
+                    <p className="text-muted mb-0">Total Pay Items</p>
+                  </div>
+                  <div className="col-6 text-center">
+                    <h2 className="text-warning mb-2">{payItems.locked}</h2>
+                    <p className="text-muted mb-0">Locked Items</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Activity & Status Row */}
+      <div className="row g-4 mb-4">
         {/* Recent Activity */}
-        <div className="col-12 col-md-6 col-lg-4">
+        <div className="col-12 col-lg-8">
           <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
             <div className="card-header bg-info bg-opacity-10">
               <h6 className="mb-0 fw-bold text-info d-flex align-items-center">
@@ -298,10 +533,10 @@ const DashboardContent: React.FC = () => {
               <div className="list-group list-group-flush">
                 {recentActivity.map((activity) => (
                   <div key={activity.id} className={`list-group-item ${isDarkMode ? 'bg-dark border-secondary' : ''} d-flex align-items-start p-3`}>
-                    <div className={`me-3 mt-1 p-2 rounded-circle bg-${activity.color} bg-opacity-15 d-flex align-items-center justify-content-center activity-icon`}>
-                      <activity.icon size={14} className={`text-${activity.color}`} />
+                    <div className={`me-3 mt-1 p-2 rounded-circle bg-${activity.color} bg-opacity-15 d-flex align-items-center justify-content-center`} style={{width: '36px', height: '36px'}}>
+                      <activity.icon size={16} className={`text-${activity.color}`} />
                     </div>
-                    <div className="flex-grow-1 min-w-0">
+                    <div className="flex-grow-1">
                       <h6 className="mb-1 fs-6 fw-semibold">{activity.title}</h6>
                       <p className="mb-1 text-muted small">{activity.description}</p>
                       <small className="text-muted">{activity.time}</small>
@@ -325,14 +560,14 @@ const DashboardContent: React.FC = () => {
             <div className="card-body">
               <div className="d-grid gap-3">
                 {systemStatus.map((status) => (
-                  <div key={status.id} className={`d-flex align-items-center justify-content-between p-2 rounded status-item ${isDarkMode ? 'dark' : ''}`}>
+                  <div key={status.id} className={`d-flex align-items-center justify-content-between p-2 rounded ${isDarkMode ? 'bg-secondary bg-opacity-10' : 'bg-light'}`}>
                     <div className="d-flex align-items-center">
-                      <div className={`me-2 p-1 rounded bg-${status.color} bg-opacity-15 d-flex align-items-center justify-content-center status-icon`}>
-                        <status.icon size={12} className={`text-${status.color}`} />
+                      <div className={`me-2 p-1 rounded bg-${status.color} bg-opacity-15`} style={{width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <status.icon size={14} className={`text-${status.color}`} />
                       </div>
-                      <span className="fw-medium">{status.name}</span>
+                      <span className="fw-medium small">{status.name}</span>
                     </div>
-                    <span className={`badge bg-${status.color} bg-opacity-20 text-${status.color} border border-${status.color} border-opacity-25 px-2 py-1`}>
+                    <span className={`badge bg-${status.color} bg-opacity-20 text-${status.color} border border-${status.color} border-opacity-25`} style={{fontSize: '0.7rem'}}>
                       {status.status}
                     </span>
                   </div>
@@ -343,93 +578,68 @@ const DashboardContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Analytics Navigation */}
-      <div className="row g-4 mb-4">
-        <div className="col-12">
-          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''} border-primary border-2`}>
-            <div className="card-body text-center py-4">
-              <div className="row align-items-center">
-                <div className="col-md-8">
-                  <h5 className="mb-2 text-primary fw-bold">📊 Advanced Analytics & Reports</h5>
-                  <p className="text-muted mb-0">View detailed charts, trends, and comprehensive KPI analysis with interactive graphs</p>
-                </div>
-                <div className="col-md-4">
-                  <button 
-                    className="btn btn-primary btn-lg px-4"
-                    onClick={() => navigate('/analytics')}
-                  >
-                    <TrendingUp size={20} className="me-2" />
-                    View Analytics
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Management Modules */}
       <div className="row g-4 mb-4">
         <div className="col-12">
-          <h5 className={`mb-3 ${isDarkMode ? 'text-white' : 'text-dark'}`}>Management Modules</h5>
-          <div className="row g-4">
-            <div className="col-12 col-sm-6 col-lg-3">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
-                <div className="card-body">
-                  <Users className="text-primary mb-3" size={48} />
-                  <h6 className="card-title">Workers Management</h6>
-                  <p className="card-text text-muted small">Manage worker profiles, rates, and status</p>
-                  <button 
-                    className="btn btn-outline-primary btn-sm"
-                    onClick={() => navigate('/workers')}
-                  >
-                    View Workers
-                  </button>
+          <h5 className={`mb-3 fw-bold ${isDarkMode ? 'text-white' : 'text-dark'}`}>Management Modules</h5>
+          <div className="row g-3">
+            <div className="col-6 col-md-3">
+              <div 
+                className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center cursor-pointer`}
+                onClick={() => navigate('/workers')}
+                style={{cursor: 'pointer', transition: 'transform 0.2s'}}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div className="card-body py-4">
+                  <Users className="text-primary mb-2" size={40} />
+                  <h6 className="card-title mb-1">Workers</h6>
+                  <p className="card-text text-muted small mb-0">Manage profiles & rates</p>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-sm-6 col-lg-3">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
-                <div className="card-body">
-                  <Briefcase className="text-success mb-3" size={48} />
-                  <h6 className="card-title">Positions</h6>
-                  <p className="card-text text-muted small">Define and manage job positions</p>
-                  <button 
-                    className="btn btn-outline-success btn-sm"
-                    onClick={() => navigate('/positions')}
-                  >
-                    Manage Positions
-                  </button>
+            <div className="col-6 col-md-3">
+              <div 
+                className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center cursor-pointer`}
+                onClick={() => navigate('/positions')}
+                style={{cursor: 'pointer', transition: 'transform 0.2s'}}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div className="card-body py-4">
+                  <Briefcase className="text-success mb-2" size={40} />
+                  <h6 className="card-title mb-1">Positions</h6>
+                  <p className="card-text text-muted small mb-0">Job positions</p>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-sm-6 col-lg-3">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
-                <div className="card-body">
-                  <Calendar className="text-info mb-3" size={48} />
-                  <h6 className="card-title">Payroll</h6>
-                  <p className="card-text text-muted small">Create pay periods and generate payroll</p>
-                  <button 
-                    className="btn btn-outline-info btn-sm"
-                    onClick={() => navigate('/payroll')}
-                  >
-                    Process Payroll
-                  </button>
+            <div className="col-6 col-md-3">
+              <div 
+                className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center cursor-pointer`}
+                onClick={() => navigate('/payroll')}
+                style={{cursor: 'pointer', transition: 'transform 0.2s'}}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div className="card-body py-4">
+                  <Calendar className="text-info mb-2" size={40} />
+                  <h6 className="card-title mb-1">Payroll</h6>
+                  <p className="card-text text-muted small mb-0">Pay periods</p>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-sm-6 col-lg-3">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
-                <div className="card-body">
-                  <DollarSign className="text-warning mb-3" size={48} />
-                  <h6 className="card-title">Disbursements</h6>
-                  <p className="card-text text-muted small">Process and track payment disbursements</p>
-                  <button 
-                    className="btn btn-outline-warning btn-sm"
-                    onClick={() => navigate('/disbursements')}
-                  >
-                    View Disbursements
-                  </button>
+            <div className="col-6 col-md-3">
+              <div 
+                className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center cursor-pointer`}
+                onClick={() => navigate('/disbursement/single')}
+                style={{cursor: 'pointer', transition: 'transform 0.2s'}}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div className="card-body py-4">
+                  <DollarSign className="text-warning mb-2" size={40} />
+                  <h6 className="card-title mb-1">Disbursements</h6>
+                  <p className="card-text text-muted small mb-0">Payment tracking</p>
                 </div>
               </div>
             </div>
@@ -437,202 +647,24 @@ const DashboardContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Workers KPIs */}
-      {workers && (
-        <>
-          <div className="d-flex align-items-center mb-3">
-            <Users className="me-2" size={20} />
-            <h5 className="mb-0">Workers Overview</h5>
-          </div>
-          <div className="row g-4 mb-4">
-            <KPICard
-              title="Total Workers"
-              value={workers.totalWorkers}
-              icon={Users}
-              color="primary"
-            />
-            <KPICard
-              title="Active Workers"
-              value={workers.activeWorkers}
-              subtitle={`${workers.inactiveWorkers} inactive`}
-              icon={UserCheck}
-              color="success"
-            />
-            <KPICard
-              title="Payable Workers"
-              value={workers.payableWorkers}
-              subtitle={`${((workers.payableWorkers / workers.totalWorkers) * 100).toFixed(1)}% of total`}
-              icon={CreditCard}
-              color="info"
-            />
-            <KPICard
-              title="KYC Gaps"
-              value={workers.kycGaps}
-              subtitle={`${workers.phoneValidPct.toFixed(1)}% phone valid`}
-              icon={AlertTriangle}
-              color={workers.kycGaps > 0 ? "warning" : "success"}
-            />
-          </div>
-
-          {/* Workers by Frequency */}
-          <div className="row g-4 mb-4">
-            <div className="col-md-4">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-                <div className="card-body text-center">
-                  <h6 className="card-subtitle mb-3 text-muted">Daily Workers</h6>
-                  <h3 className="text-primary">{workers.byFrequencyActive.daily}</h3>
-                  <small className="text-muted">Active daily workers</small>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-                <div className="card-body text-center">
-                  <h6 className="card-subtitle mb-3 text-muted">Weekly Workers</h6>
-                  <h3 className="text-success">{workers.byFrequencyActive.weekly}</h3>
-                  <small className="text-muted">Active weekly workers</small>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4">
-              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-                <div className="card-body text-center">
-                  <h6 className="card-subtitle mb-3 text-muted">Monthly Workers</h6>
-                  <h3 className="text-info">{workers.byFrequencyActive.monthly}</h3>
-                  <small className="text-muted">Active monthly workers</small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Payouts KPIs */}
-      {payouts && (
-        <>
-          <div className="d-flex align-items-center mb-3">
-            <Banknote className="me-2" size={20} />
-            <h5 className="mb-0">Payouts Overview</h5>
-          </div>
-          <div className="row g-4 mb-4">
-            <KPICard
-              title="Total Payouts"
-              value={payouts.total}
-              subtitle={`KES ${payouts.totalAmount.toLocaleString()}`}
-              icon={DollarSign}
-              color="primary"
-            />
-            <KPICard
-              title="Successful"
-              value={payouts.success}
-              subtitle={`KES ${payouts.successAmount.toLocaleString()}`}
-              icon={CheckCircle}
-              color="success"
-            />
-            <KPICard
-              title="Pending"
-              value={payouts.pending}
-              icon={Clock}
-              color="warning"
-            />
-            <KPICard
-              title="Failed"
-              value={payouts.failed}
-              icon={AlertTriangle}
-              color="danger"
-            />
-          </div>
-        </>
-      )}
-
-      {/* Pay Items and Periods */}
-      <div className="row g-4 mb-4">
-        {payItems && (
-          <div className="col-md-6">
-            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-              <div className="card-header">
-                <div className="d-flex align-items-center">
-                  <Package className="me-2" size={20} />
-                  <h6 className="mb-0">Pay Items</h6>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="row">
-                  <div className="col-6 text-center">
-                    <h4 className="text-primary">{payItems.total}</h4>
-                    <small className="text-muted">Total Items</small>
-                  </div>
-                  <div className="col-6 text-center">
-                    <h4 className="text-warning">{payItems.locked}</h4>
-                    <small className="text-muted">Locked</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {payPeriods && (
-          <div className="col-md-6">
-            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-              <div className="card-header">
-                <div className="d-flex align-items-center">
-                  <Calendar className="me-2" size={20} />
-                  <h6 className="mb-0">Pay Periods</h6>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="row">
-                  <div className="col-4 text-center">
-                    <h4 className="text-primary">{payPeriods.totalPeriods}</h4>
-                    <small className="text-muted">Total</small>
-                  </div>
-                  <div className="col-4 text-center">
-                    <h4 className="text-success">{payPeriods.approvedPeriods}</h4>
-                    <small className="text-muted">Approved</small>
-                  </div>
-                  <div className="col-4 text-center">
-                    <h4 className="text-info">KES {payPeriods.totalNetAmount.toLocaleString()}</h4>
-                    <small className="text-muted">Net Amount</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Pay Period Frequency Breakdown */}
-      {payPeriods && (
-        <div className="row g-4">
-          <div className="col-12">
-            <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-              <div className="card-header">
-                <div className="d-flex align-items-center">
-                  <FileText className="me-2" size={20} />
-                  <h6 className="mb-0">Pay Period Frequency Breakdown</h6>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="row">
-                  <div className="col-md-4 text-center">
-                    <h4 className="text-primary">{payPeriods.byFrequency.counts.DAILY}</h4>
-                    <p className="text-muted mb-0">Daily Periods</p>
-                  </div>
-                  <div className="col-md-4 text-center">
-                    <h4 className="text-success">{payPeriods.byFrequency.counts.WEEKLY}</h4>
-                    <p className="text-muted mb-0">Weekly Periods</p>
-                  </div>
-                  <div className="col-md-4 text-center">
-                    <h4 className="text-info">{payPeriods.byFrequency.counts.MONTHLY}</h4>
-                    <p className="text-muted mb-0">Monthly Periods</p>
-                  </div>
-                </div>
-              </div>
+      {/* Analytics CTA */}
+      <div className="row g-4">
+        <div className="col-12">
+          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''} border-primary border-2`}>
+            <div className="card-body text-center py-4">
+              <TrendingUp size={48} className="text-primary mb-3" />
+              <h5 className="mb-2 text-primary fw-bold">Advanced Analytics & Reports</h5>
+              <p className="text-muted mb-3">View detailed charts, trends, and comprehensive KPI analysis with interactive graphs</p>
+              <button 
+                className="btn btn-primary btn-lg px-5"
+                onClick={() => navigate('/analytics')}
+              >
+                View Analytics Dashboard
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
