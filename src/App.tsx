@@ -6,6 +6,7 @@ import { SessionManager } from './utils/sessionManager';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/Login.tsx';
 import Dashboard from './components/Dashboard';
+import Analytics from './components/Analytics';
 import Positions from './components/Positions';
 import Workers from './components/Workers';
 import Payroll from './components/Payroll';
@@ -39,6 +40,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/analytics" 
+              element={
+                <ProtectedRoute>
+                  <Analytics />
                 </ProtectedRoute>
               } 
             />

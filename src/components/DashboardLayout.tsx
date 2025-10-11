@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Moon,
-  Sun
+  Sun,
+  BarChart3
 } from 'lucide-react';
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,6 +43,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   const sidebarItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard' },
+    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
     { icon: Briefcase, label: 'Positions', path: '/positions' },
     { icon: Users, label: 'Workers', path: '/workers' },
     { icon: Calendar, label: 'Payroll', path: '/payroll' },
@@ -87,7 +89,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </div>
         
         <nav className="mt-3">
-          {sidebarItems.slice(0, 4).map((item, index) => {
+          {sidebarItems.slice(0, 6).map((item, index) => {
             const isActive = location.pathname === item.path;
             return (
               <Link

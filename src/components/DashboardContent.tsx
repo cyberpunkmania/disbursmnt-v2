@@ -260,21 +260,24 @@ const DashboardContent: React.FC = () => {
       {/* Top Row: Quick Actions, Recent Activity, System Status */}
       <div className="row g-4 mb-4">
         {/* Quick Actions */}
-        <div className="col-12 col-lg-4">
+        <div className="col-12 col-md-6 col-lg-4">
           <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-            <div className="card-header">
-              <h6 className="mb-0 fw-bold">Quick Actions</h6>
+            <div className="card-header bg-primary bg-opacity-10">
+              <h6 className="mb-0 fw-bold text-primary">
+                <Activity size={16} className="me-2" />
+                Quick Actions
+              </h6>
             </div>
             <div className="card-body">
               <div className="d-grid gap-2">
                 {quickActions.map((action, index) => (
                   <button
                     key={index}
-                    className={`btn btn-outline-${action.color} btn-sm d-flex align-items-center justify-content-start`}
+                    className={`btn btn-outline-${action.color} btn-sm d-flex align-items-center justify-content-start text-start`}
                     onClick={() => navigate(action.path)}
                   >
-                    <action.icon size={16} className="me-2" />
-                    {action.label}
+                    <action.icon size={16} className="me-2 flex-shrink-0" />
+                    <span className="flex-grow-1">{action.label}</span>
                   </button>
                 ))}
               </div>
@@ -283,21 +286,23 @@ const DashboardContent: React.FC = () => {
         </div>
 
         {/* Recent Activity */}
-        <div className="col-12 col-lg-4">
+        <div className="col-12 col-md-6 col-lg-4">
           <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h6 className="mb-0 fw-bold">Recent Activity</h6>
-              <Activity size={16} className="text-muted" />
+            <div className="card-header bg-info bg-opacity-10">
+              <h6 className="mb-0 fw-bold text-info d-flex align-items-center">
+                <Clock size={16} className="me-2" />
+                Recent Activity
+              </h6>
             </div>
             <div className="card-body p-0">
               <div className="list-group list-group-flush">
                 {recentActivity.map((activity) => (
-                  <div key={activity.id} className={`list-group-item ${isDarkMode ? 'bg-dark border-secondary' : ''} d-flex align-items-start`}>
-                    <div className={`me-3 mt-1 p-1 rounded-circle bg-${activity.color} bg-opacity-10`}>
+                  <div key={activity.id} className={`list-group-item ${isDarkMode ? 'bg-dark border-secondary' : ''} d-flex align-items-start p-3`}>
+                    <div className={`me-3 mt-1 p-2 rounded-circle bg-${activity.color} bg-opacity-15 d-flex align-items-center justify-content-center activity-icon`}>
                       <activity.icon size={14} className={`text-${activity.color}`} />
                     </div>
                     <div className="flex-grow-1 min-w-0">
-                      <h6 className="mb-1 fs-6">{activity.title}</h6>
+                      <h6 className="mb-1 fs-6 fw-semibold">{activity.title}</h6>
                       <p className="mb-1 text-muted small">{activity.description}</p>
                       <small className="text-muted">{activity.time}</small>
                     </div>
@@ -311,22 +316,52 @@ const DashboardContent: React.FC = () => {
         {/* System Status */}
         <div className="col-12 col-lg-4">
           <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
-            <div className="card-header">
-              <h6 className="mb-0 fw-bold">System Status</h6>
+            <div className="card-header bg-success bg-opacity-10">
+              <h6 className="mb-0 fw-bold text-success d-flex align-items-center">
+                <Shield size={16} className="me-2" />
+                System Status
+              </h6>
             </div>
             <div className="card-body">
               <div className="d-grid gap-3">
                 {systemStatus.map((status) => (
-                  <div key={status.id} className="d-flex align-items-center justify-content-between">
+                  <div key={status.id} className={`d-flex align-items-center justify-content-between p-2 rounded status-item ${isDarkMode ? 'dark' : ''}`}>
                     <div className="d-flex align-items-center">
-                      <status.icon size={16} className={`text-${status.color} me-2`} />
-                      <span className="small">{status.name}</span>
+                      <div className={`me-2 p-1 rounded bg-${status.color} bg-opacity-15 d-flex align-items-center justify-content-center status-icon`}>
+                        <status.icon size={12} className={`text-${status.color}`} />
+                      </div>
+                      <span className="fw-medium">{status.name}</span>
                     </div>
-                    <span className={`badge bg-${status.color} bg-opacity-10 text-${status.color} border border-${status.color} border-opacity-25`}>
+                    <span className={`badge bg-${status.color} bg-opacity-20 text-${status.color} border border-${status.color} border-opacity-25 px-2 py-1`}>
                       {status.status}
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Navigation */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''} border-primary border-2`}>
+            <div className="card-body text-center py-4">
+              <div className="row align-items-center">
+                <div className="col-md-8">
+                  <h5 className="mb-2 text-primary fw-bold">📊 Advanced Analytics & Reports</h5>
+                  <p className="text-muted mb-0">View detailed charts, trends, and comprehensive KPI analysis with interactive graphs</p>
+                </div>
+                <div className="col-md-4">
+                  <button 
+                    className="btn btn-primary btn-lg px-4"
+                    onClick={() => navigate('/analytics')}
+                  >
+                    <TrendingUp size={20} className="me-2" />
+                    View Analytics
+                  </button>
+                </div>
               </div>
             </div>
           </div>
