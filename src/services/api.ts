@@ -23,6 +23,12 @@ import type {
   DisbursementBatch,
   Payout,
   CreateSinglePayoutRequest,
+  CreateBatchResponse,
+  SendBatchResponse,
+  WorkersKPI,
+  PayoutsKPI,
+  PayItemsKPI,
+  PayPeriodsKPI,
 } from '../types';
 
 const BASE_URL = 'https://fund-disbursement-production.up.railway.app';
@@ -298,20 +304,20 @@ export const payItemsApi = {
 };
 
 export const disbursementsApi = {
-  createBatchFromPeriod: async (periodUuid: string): Promise<ApiResponse<{ batchUuid: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ batchUuid: string }>> = await api.post(
+  createBatchFromPeriod: async (periodUuid: string): Promise<ApiResponse<CreateBatchResponse>> => {
+    const response: AxiosResponse<ApiResponse<CreateBatchResponse>> = await api.post(
       `/api/disbursements/from-period/${periodUuid}`
     );
     return response.data;
   },
   
-  createSinglePayout: async (data: CreateSinglePayoutRequest): Promise<ApiResponse<{ batchUuid: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ batchUuid: string }>> = await api.post('/api/disbursements/single', data);
+  createSinglePayout: async (data: CreateSinglePayoutRequest): Promise<ApiResponse<CreateBatchResponse>> => {
+    const response: AxiosResponse<ApiResponse<CreateBatchResponse>> = await api.post('/api/disbursements/single', data);
     return response.data;
   },
   
-  sendBatch: async (batchUuid: string): Promise<ApiResponse<{ status: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ status: string }>> = await api.post(`/api/disbursements/send/${batchUuid}`);
+  sendBatch: async (batchUuid: string): Promise<ApiResponse<SendBatchResponse>> => {
+    const response: AxiosResponse<ApiResponse<SendBatchResponse>> = await api.post(`/api/disbursements/send/${batchUuid}`);
     return response.data;
   },
   
@@ -327,6 +333,48 @@ export const disbursementsApi = {
   
   getPayout: async (payoutUuid: string): Promise<ApiResponse<Payout>> => {
     const response: AxiosResponse<ApiResponse<Payout>> = await api.get(`/api/disbursements/payouts/${payoutUuid}`);
+    return response.data;
+  },
+};
+
+export const kpiApi = {
+  getWorkersKPI: async (): Promise<ApiResponse<WorkersKPI>> => {
+    const response: AxiosResponse<ApiResponse<WorkersKPI>> = await api.get('/api/v1/kpi/workers');
+    return response.data;
+  },
+  
+  downloadWorkersKPI: async (): Promise<Blob> => {
+    const response = await api.get('/api/v1/kpi/workers.csv', {
+      responseType: 'blob',
+      headers: {
+        'accept': 'text/csv'
+      }
+    });
+    return response.data;
+  },
+  
+  getPayoutsKPI: async (): Promise<ApiResponse<PayoutsKPI>> => {
+    const response: AxiosResponse<ApiResponse<PayoutsKPI>> = await api.get('/api/v1/kpi/payouts');
+    return response.data;
+  },
+  
+  getPayItemsKPI: async (): Promise<ApiResponse<PayItemsKPI>> => {
+    const response: AxiosResponse<ApiResponse<PayItemsKPI>> = await api.get('/api/v1/kpi/pay-items');
+    return response.data;
+  },
+  
+  getPayPeriodsKPI: async (): Promise<ApiResponse<PayPeriodsKPI>> => {
+    const response: AxiosResponse<ApiResponse<PayPeriodsKPI>> = await api.get('/api/v1/kpi/pay-periods');
+    return response.data;
+  },
+  
+  downloadPayPeriodsKPI: async (): Promise<Blob> => {
+    const response = await api.get('/api/v1/kpi/pay-periods.csv', {
+      responseType: 'blob',
+      headers: {
+        'accept': 'text/csv'
+      }
+    });
     return response.data;
   },
 };

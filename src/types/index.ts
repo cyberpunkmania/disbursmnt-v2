@@ -261,3 +261,82 @@ export interface CreateSinglePayoutRequest {
   amount: number;
   clientRef?: string;
 }
+
+// Disbursement API Response Types
+export interface CreateBatchResponse {
+  batchUuid: string;
+}
+
+export interface SendBatchResponse {
+  status: string;
+}
+
+// KPI Types
+export interface WorkersKPI {
+  totalWorkers: number;
+  activeWorkers: number;
+  inactiveWorkers: number;
+  payableWorkers: number;
+  kycGaps: number;
+  phoneValidPct: number;
+  byFrequencyOverall: {
+    counts: {
+      DAILY: number;
+      WEEKLY: number;
+      MONTHLY: number;
+    };
+    daily: number;
+    weekly: number;
+    monthly: number;
+  };
+  byFrequencyActive: {
+    counts: {
+      DAILY: number;
+      WEEKLY: number;
+      MONTHLY: number;
+    };
+    daily: number;
+    weekly: number;
+    monthly: number;
+  };
+}
+
+export interface PayoutsKPI {
+  total: number;
+  pending: number;
+  sent: number;
+  success: number;
+  failed: number;
+  totalAmount: number;
+  successAmount: number;
+}
+
+export interface PayItemsKPI {
+  total: number;
+  ready: number;
+  locked: number;
+}
+
+export interface PayPeriodsKPI {
+  totalPeriods: number;
+  draftPeriods: number;
+  approvedPeriods: number;
+  byFrequency: {
+    counts: {
+      WEEKLY: number;
+      MONTHLY: number;
+      DAILY: number;
+    };
+  };
+  totalItems: number;
+  itemsReady: number;
+  itemsLocked: number;
+  totalNetAmount: number;
+}
+
+export interface DashboardKPIs {
+  workers: WorkersKPI;
+  payouts: PayoutsKPI;
+  payItems: PayItemsKPI;
+  payPeriods: PayPeriodsKPI;
+}

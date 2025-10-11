@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { payrollApi } from '../services/api';
+import { payrollApi, disbursementsApi } from '../services/api';
 import type { PayPeriod, CreatePayPeriodRequest, UpdatePayPeriodRequest, PayrollSearchParams } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
@@ -15,7 +15,8 @@ import {
   MoreVertical,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from 'lucide-react';
 
 const PayrollManagement: React.FC = () => {
@@ -54,6 +55,7 @@ const PayrollManagement: React.FC = () => {
   const [createLoading, setCreateLoading] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
+  const [createBatchLoading, setCreateBatchLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPayrolls();
@@ -200,6 +202,34 @@ const PayrollManagement: React.FC = () => {
       }
     } finally {
       setApproveLoading(null);
+    }
+  };
+
+  const handleCreateDisbursementBatch = async (payroll: PayPeriod) => {
+    if (payroll.status !== 'APPROVED') return;
+    
+    try {
+      setCreateBatchLoading(payroll.uuid);
+      setError(null);
+      
+      const response = await disbursementsApi.createBatchFromPeriod(payroll.uuid);
+      if (response.success) {
+        setSuccess(`Disbursement batch created successfully! Batch ID: ${response.data.batchUuid}`);
+        setTimeout(() => setSuccess(null), 5000);
+        // Optionally navigate to disbursements page
+        // navigate('/disbursements');
+      } else {
+        setError(response.message || 'Failed to create disbursement batch');
+      }
+    } catch (error: any) {
+      console.error('Error creating disbursement batch:', error);
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else {
+        setError('Failed to create disbursement batch. Please try again.');
+      }
+    } finally {
+      setCreateBatchLoading(null);
     }
   };
 
@@ -561,6 +591,27 @@ const PayrollManagement: React.FC = () => {
                                   >
                                     <Users size={14} />
                                     View Workers
+                                  </button>
+                                </li>
+                              )}
+                              {payroll.status === 'APPROVED' && (
+                                <li>
+                                  <button
+                                    className="dropdown-item d-flex align-items-center gap-2"
+                                    onClick={() => handleCreateDisbursementBatch(payroll)}
+                                    disabled={createBatchLoading === payroll.uuid}
+                                  >
+                                    {createBatchLoading === payroll.uuid ? (
+                                      <>
+                                        <div className="spinner-border spinner-border-sm" role="status" />
+                                        Creating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <DollarSign size={14} />
+                                        Create Disbursement Batch
+                                      </>
+                                    )}
                                   </button>
                                 </li>
                               )}

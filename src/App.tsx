@@ -10,6 +10,7 @@ import Positions from './components/Positions';
 import Workers from './components/Workers';
 import Payroll from './components/Payroll';
 import PayItems from './components/PayItems';
+import DisbursementManagement from './components/DisbursementManagement';
 
 // Component to set up the session notification callback
 const SessionNotificationSetup = () => {
@@ -67,6 +68,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <PayItems />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/disbursements"
+              element={
+                <ProtectedRoute>
+                  <DisbursementManagement />
                 </ProtectedRoute>
               }
             />

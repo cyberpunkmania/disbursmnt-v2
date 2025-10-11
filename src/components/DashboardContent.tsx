@@ -1,281 +1,350 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { kpiApi } from '../services/api';
+import KPICard from './KPICard';
+import type { WorkersKPI, PayoutsKPI, PayItemsKPI, PayPeriodsKPI } from '../types';
 import { 
   Users, 
-  Briefcase, 
   Calendar, 
   DollarSign,
   TrendingUp,
-  Activity,
   Clock,
-  CheckCircle
+  CheckCircle,
+  AlertTriangle,
+  Download,
+  Loader2,
+  CreditCard,
+  Package,
+  FileText,
+  Banknote,
+  UserCheck
 } from 'lucide-react';
 
 const DashboardContent: React.FC = () => {
   const { isDarkMode } = useTheme();
-  const stats = [
-    { 
-      name: 'Total Workers', 
-      value: '2,345', 
-      change: '+12%', 
-      changeType: 'positive',
-      icon: Users, 
-      color: 'primary' 
-    },
-    { 
-      name: 'Active Positions', 
-      value: '12', 
-      change: '+2', 
-      changeType: 'positive',
-      icon: Briefcase, 
-      color: 'success' 
-    },
-    { 
-      name: 'Pay Periods', 
-      value: '8', 
-      change: 'This month', 
-      changeType: 'neutral',
-      icon: Calendar, 
-      color: 'info' 
-    },
-    { 
-      name: 'Total Disbursed', 
-      value: 'KES 1.2M', 
-      change: '+8.2%', 
-      changeType: 'positive',
-      icon: DollarSign, 
-      color: 'warning' 
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [kpiData, setKpiData] = useState<{
+    workers: WorkersKPI | null;
+    payouts: PayoutsKPI | null;
+    payItems: PayItemsKPI | null;
+    payPeriods: PayPeriodsKPI | null;
+  }>({
+    workers: null,
+    payouts: null,
+    payItems: null,
+    payPeriods: null
+  });
 
-  const recentActivities = [
-    { 
-      id: 1, 
-      action: 'New worker added', 
-      details: 'Jane Doe added to Site A team', 
-      time: '2 hours ago',
-      type: 'success'
-    },
-    { 
-      id: 2, 
-      action: 'Payroll processed', 
-      details: 'Weekly payroll for 150 workers', 
-      time: '4 hours ago',
-      type: 'info'
-    },
-    { 
-      id: 3, 
-      action: 'Disbursement sent', 
-      details: 'KES 45,000 sent via M-Pesa', 
-      time: '6 hours ago',
-      type: 'success'
-    },
-    { 
-      id: 4, 
-      action: 'Position updated', 
-      details: 'Supervisor role modified', 
-      time: '1 day ago',
-      type: 'warning'
-    },
-  ];
+  useEffect(() => {
+    loadKPIData();
+  }, []);
 
-  const quickActions = [
-    { icon: Users, label: 'Add New Worker', color: 'primary', path: '/workers/new' },
-    { icon: Calendar, label: 'Create Pay Period', color: 'success', path: '/payroll/new' },
-    { icon: DollarSign, label: 'Process Disbursement', color: 'warning', path: '/disbursements/new' },
-    { icon: Briefcase, label: 'Manage Positions', color: 'info', path: '/positions' },
-  ];
+  const loadKPIData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [workersResponse, payoutsResponse, payItemsResponse, payPeriodsResponse] = await Promise.all([
+        kpiApi.getWorkersKPI(),
+        kpiApi.getPayoutsKPI(),
+        kpiApi.getPayItemsKPI(),
+        kpiApi.getPayPeriodsKPI()
+      ]);
+
+      setKpiData({
+        workers: workersResponse.success ? workersResponse.data : null,
+        payouts: payoutsResponse.success ? payoutsResponse.data : null,
+        payItems: payItemsResponse.success ? payItemsResponse.data : null,
+        payPeriods: payPeriodsResponse.success ? payPeriodsResponse.data : null
+      });
+    } catch (error: any) {
+      console.error('Error loading KPI data:', error);
+      setError('Failed to load dashboard data. Please try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadWorkersKPI = async () => {
+    try {
+      const blob = await kpiApi.downloadWorkersKPI();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `workers-kpi-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading workers KPI:', error);
+    }
+  };
+
+  const downloadPayPeriodsKPI = async () => {
+    try {
+      const blob = await kpiApi.downloadPayPeriodsKPI();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pay-periods-kpi-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading pay periods KPI:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center py-5">
+        <div className="text-center">
+          <Loader2 className="spinner-border text-primary" size={48} />
+          <p className="mt-3 text-muted">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="alert alert-danger d-flex align-items-center" role="alert">
+        <AlertTriangle className="me-2" size={20} />
+        {error}
+        <button className="btn btn-sm btn-outline-danger ms-auto" onClick={loadKPIData}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const { workers, payouts, payItems, payPeriods } = kpiData;
 
   return (
     <div>
       {/* Welcome Section */}
       <div className="mb-4">
-        <h2 className={`h3 fw-bold mb-1 ${isDarkMode ? 'text-white' : 'text-dark'}`}>Welcome back!</h2>
-        <p className="text-muted">Here's what's happening with your disbursements today.</p>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+          <div className="mb-3 mb-md-0">
+            <h2 className={`h3 fw-bold mb-1 ${isDarkMode ? 'text-white' : 'text-dark'}`}>Dashboard</h2>
+            <p className="text-muted mb-0">Real-time disbursement management overview</p>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            <button className="btn btn-outline-primary btn-sm" onClick={downloadWorkersKPI}>
+              <Download size={16} className="me-1" />
+              Workers CSV
+            </button>
+            <button className="btn btn-outline-primary btn-sm" onClick={downloadPayPeriodsKPI}>
+              <Download size={16} className="me-1" />
+              Pay Periods CSV
+            </button>
+            <button className="btn btn-outline-secondary btn-sm" onClick={loadKPIData}>
+              <TrendingUp size={16} className="me-1" />
+              Refresh
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Workers KPIs */}
+      {workers && (
+        <>
+          <div className="d-flex align-items-center mb-3">
+            <Users className="me-2" size={20} />
+            <h5 className="mb-0">Workers Overview</h5>
+          </div>
+          <div className="row g-4 mb-4">
+            <KPICard
+              title="Total Workers"
+              value={workers.totalWorkers}
+              icon={Users}
+              color="primary"
+            />
+            <KPICard
+              title="Active Workers"
+              value={workers.activeWorkers}
+              subtitle={`${workers.inactiveWorkers} inactive`}
+              icon={UserCheck}
+              color="success"
+            />
+            <KPICard
+              title="Payable Workers"
+              value={workers.payableWorkers}
+              subtitle={`${((workers.payableWorkers / workers.totalWorkers) * 100).toFixed(1)}% of total`}
+              icon={CreditCard}
+              color="info"
+            />
+            <KPICard
+              title="KYC Gaps"
+              value={workers.kycGaps}
+              subtitle={`${workers.phoneValidPct.toFixed(1)}% phone valid`}
+              icon={AlertTriangle}
+              color={workers.kycGaps > 0 ? "warning" : "success"}
+            />
+          </div>
+
+          {/* Workers by Frequency */}
+          <div className="row g-4 mb-4">
+            <div className="col-md-4">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+                <div className="card-body text-center">
+                  <h6 className="card-subtitle mb-3 text-muted">Daily Workers</h6>
+                  <h3 className="text-primary">{workers.byFrequencyActive.daily}</h3>
+                  <small className="text-muted">Active daily workers</small>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+                <div className="card-body text-center">
+                  <h6 className="card-subtitle mb-3 text-muted">Weekly Workers</h6>
+                  <h3 className="text-success">{workers.byFrequencyActive.weekly}</h3>
+                  <small className="text-muted">Active weekly workers</small>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-4">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+                <div className="card-body text-center">
+                  <h6 className="card-subtitle mb-3 text-muted">Monthly Workers</h6>
+                  <h3 className="text-info">{workers.byFrequencyActive.monthly}</h3>
+                  <small className="text-muted">Active monthly workers</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Payouts KPIs */}
+      {payouts && (
+        <>
+          <div className="d-flex align-items-center mb-3">
+            <Banknote className="me-2" size={20} />
+            <h5 className="mb-0">Payouts Overview</h5>
+          </div>
+          <div className="row g-4 mb-4">
+            <KPICard
+              title="Total Payouts"
+              value={payouts.total}
+              subtitle={`KES ${payouts.totalAmount.toLocaleString()}`}
+              icon={DollarSign}
+              color="primary"
+            />
+            <KPICard
+              title="Successful"
+              value={payouts.success}
+              subtitle={`KES ${payouts.successAmount.toLocaleString()}`}
+              icon={CheckCircle}
+              color="success"
+            />
+            <KPICard
+              title="Pending"
+              value={payouts.pending}
+              icon={Clock}
+              color="warning"
+            />
+            <KPICard
+              title="Failed"
+              value={payouts.failed}
+              icon={AlertTriangle}
+              color="danger"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Pay Items and Periods */}
       <div className="row g-4 mb-4">
-        {stats.map((stat, index) => (
-          <div key={index} className="col-xl-3 col-md-6">
-            <div className={`card dashboard-card stat-card ${stat.color} h-100 ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}>
+        {payItems && (
+          <div className="col-md-6">
+            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+              <div className="card-header">
+                <div className="d-flex align-items-center">
+                  <Package className="me-2" size={20} />
+                  <h6 className="mb-0">Pay Items</h6>
+                </div>
+              </div>
               <div className="card-body">
-                <div className="d-flex align-items-center justify-content-between">
-                  <div>
-                    <p className="text-muted small mb-1">{stat.name}</p>
-                    <h4 className="fw-bold mb-0">{stat.value}</h4>
-                    <small className={`text-${stat.changeType === 'positive' ? 'success' : stat.changeType === 'negative' ? 'danger' : 'muted'}`}>
-                      {stat.changeType === 'positive' && <TrendingUp size={12} className="me-1" />}
-                      {stat.change}
-                    </small>
+                <div className="row">
+                  <div className="col-6 text-center">
+                    <h4 className="text-primary">{payItems.total}</h4>
+                    <small className="text-muted">Total Items</small>
                   </div>
-                  <div className={`bg-${stat.color} bg-opacity-10 rounded-3 p-3`}>
-                    <stat.icon size={24} className={`text-${stat.color}`} />
+                  <div className="col-6 text-center">
+                    <h4 className="text-warning">{payItems.locked}</h4>
+                    <small className="text-muted">Locked</small>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        ))}
+        )}
+
+        {payPeriods && (
+          <div className="col-md-6">
+            <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+              <div className="card-header">
+                <div className="d-flex align-items-center">
+                  <Calendar className="me-2" size={20} />
+                  <h6 className="mb-0">Pay Periods</h6>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-4 text-center">
+                    <h4 className="text-primary">{payPeriods.totalPeriods}</h4>
+                    <small className="text-muted">Total</small>
+                  </div>
+                  <div className="col-4 text-center">
+                    <h4 className="text-success">{payPeriods.approvedPeriods}</h4>
+                    <small className="text-muted">Approved</small>
+                  </div>
+                  <div className="col-4 text-center">
+                    <h4 className="text-info">KES {payPeriods.totalNetAmount.toLocaleString()}</h4>
+                    <small className="text-muted">Net Amount</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="row g-4">
-        {/* Quick Actions */}
-        <div className="col-xl-4 col-lg-6">
-          <div className="card dashboard-card h-100">
-            <div className="card-header bg-transparent">
-              <h5 className="card-title mb-0">Quick Actions</h5>
-            </div>
-            <div className="card-body">
-              <div className="d-grid gap-3">
-                {quickActions.map((action, index) => (
-                  <button 
-                    key={index}
-                    className={`btn btn-outline-${action.color} text-start d-flex align-items-center`}
-                  >
-                    <action.icon size={20} className="me-3" />
-                    <span>{action.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="col-xl-4 col-lg-6">
-          <div className="card dashboard-card h-100">
-            <div className="card-header bg-transparent d-flex justify-content-between align-items-center">
-              <h5 className="card-title mb-0">Recent Activity</h5>
-              <Activity size={18} className="text-muted" />
-            </div>
-            <div className="card-body">
-              <div className="timeline">
-                {recentActivities.map((activity, index) => (
-                  <div key={activity.id} className={`d-flex mb-3 ${index === recentActivities.length - 1 ? '' : 'pb-3 border-bottom'}`}>
-                    <div className={`me-3 mt-1`}>
-                      <div className={`rounded-circle bg-${activity.type} bg-opacity-20 p-1`}>
-                        <CheckCircle size={12} className={`text-${activity.type}`} />
-                      </div>
-                    </div>
-                    <div className="flex-grow-1">
-                      <h6 className="small fw-medium mb-1">{activity.action}</h6>
-                      <p className="small text-muted mb-1">{activity.details}</p>
-                      <small className="text-muted">
-                        <Clock size={10} className="me-1" />
-                        {activity.time}
-                      </small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* System Status */}
-        <div className="col-xl-4 col-lg-12">
-          <div className={`card dashboard-card h-100 ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}>
-            <div className="card-header bg-transparent">
-              <h5 className="card-title mb-0">System Status</h5>
-            </div>
-            <div className="card-body">
-              <div className="d-flex flex-column gap-3">
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-success bg-opacity-20 rounded-circle p-1 me-2">
-                      <CheckCircle size={12} className="text-success" />
-                    </div>
-                    <span className="small">API Status</span>
-                  </div>
-                  <span className="badge bg-success">Operational</span>
-                </div>
-                
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-success bg-opacity-20 rounded-circle p-1 me-2">
-                      <CheckCircle size={12} className="text-success" />
-                    </div>
-                    <span className="small">M-Pesa Integration</span>
-                  </div>
-                  <span className="badge bg-success">Connected</span>
-                </div>
-                
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-success bg-opacity-20 rounded-circle p-1 me-2">
-                      <CheckCircle size={12} className="text-success" />
-                    </div>
-                    <span className="small">Database</span>
-                  </div>
-                  <span className="badge bg-success">Healthy</span>
-                </div>
-                
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-warning bg-opacity-20 rounded-circle p-1 me-2">
-                      <Clock size={12} className="text-warning" />
-                    </div>
-                    <span className="small">Last Backup</span>
-                  </div>
-                  <span className="badge bg-warning">2 hours ago</span>
+      {/* Pay Period Frequency Breakdown */}
+      {payPeriods && (
+        <div className="row g-4">
+          <div className="col-12">
+            <div className={`card ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+              <div className="card-header">
+                <div className="d-flex align-items-center">
+                  <FileText className="me-2" size={20} />
+                  <h6 className="mb-0">Pay Period Frequency Breakdown</h6>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Management Cards */}
-      <div className="row g-4 mt-2">
-        <div className="col-12">
-          <div className={`card dashboard-card ${isDarkMode ? 'bg-dark text-white border-secondary' : ''}`}>
-            <div className="card-header bg-transparent">
-              <h5 className="card-title mb-0">Management Modules</h5>
-            </div>
-            <div className="card-body">
-              <div className="row g-3">
-                <div className="col-lg-3 col-md-6">
-                  <div className="text-center p-4 border rounded-3 h-100 dashboard-card">
-                    <Users size={48} className="text-primary mb-3" />
-                    <h6 className="fw-semibold">Workers Management</h6>
-                    <p className="small text-muted mb-3">Manage worker profiles, rates, and status</p>
-                    <button className="btn btn-outline-primary btn-sm">View Workers</button>
+              <div className="card-body">
+                <div className="row">
+                  <div className="col-md-4 text-center">
+                    <h4 className="text-primary">{payPeriods.byFrequency.counts.DAILY}</h4>
+                    <p className="text-muted mb-0">Daily Periods</p>
                   </div>
-                </div>
-                
-                <div className="col-lg-3 col-md-6">
-                  <div className="text-center p-4 border rounded-3 h-100 dashboard-card">
-                    <Briefcase size={48} className="text-success mb-3" />
-                    <h6 className="fw-semibold">Positions</h6>
-                    <p className="small text-muted mb-3">Define and manage job positions</p>
-                    <button className="btn btn-outline-success btn-sm">Manage Positions</button>
+                  <div className="col-md-4 text-center">
+                    <h4 className="text-success">{payPeriods.byFrequency.counts.WEEKLY}</h4>
+                    <p className="text-muted mb-0">Weekly Periods</p>
                   </div>
-                </div>
-                
-                <div className="col-lg-3 col-md-6">
-                  <div className="text-center p-4 border rounded-3 h-100 dashboard-card">
-                    <Calendar size={48} className="text-info mb-3" />
-                    <h6 className="fw-semibold">Payroll</h6>
-                    <p className="small text-muted mb-3">Create pay periods and generate payroll</p>
-                    <button className="btn btn-outline-info btn-sm">Process Payroll</button>
-                  </div>
-                </div>
-                
-                <div className="col-lg-3 col-md-6">
-                  <div className="text-center p-4 border rounded-3 h-100 dashboard-card">
-                    <DollarSign size={48} className="text-warning mb-3" />
-                    <h6 className="fw-semibold">Disbursements</h6>
-                    <p className="small text-muted mb-3">Process and track payment disbursements</p>
-                    <button className="btn btn-outline-warning btn-sm">View Disbursements</button>
+                  <div className="col-md-4 text-center">
+                    <h4 className="text-info">{payPeriods.byFrequency.counts.MONTHLY}</h4>
+                    <p className="text-muted mb-0">Monthly Periods</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

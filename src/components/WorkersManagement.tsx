@@ -1,7 +1,8 @@
 import { useState, useEffect }from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { workersApi, positionsApi } from '../services/api';
-import type { Worker, Position, CreateWorkerRequest, WorkerSearchParams, PaginatedResponse } from '../types';
+import { workersApi, positionsApi, kpiApi } from '../services/api';
+import KPICard from './KPICard';
+import type { Worker, Position, CreateWorkerRequest, WorkerSearchParams, PaginatedResponse, WorkersKPI } from '../types';
 import {
   Plus,
   Search,
@@ -33,6 +34,7 @@ const WorkersManagement: React.FC = () => {
   const { theme } = useTheme();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [workersKPI, setWorkersKPI] = useState<WorkersKPI | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -49,7 +51,23 @@ const WorkersManagement: React.FC = () => {
     payable: undefined,
     team: '',
     minRate: undefined,
-    maxRate: undefined
+    maxRate: undefined,
+    start: '',
+    end: ''
+  });
+
+  // Additional filter states for the UI
+  const [filterCollapsed, setFilterCollapsed] = useState(true);
+  const [tempFilters, setTempFilters] = useState({
+    keyword: '',
+    status: '',
+    payFrequency: '',
+    payable: '',
+    team: '',
+    minRate: '',
+    maxRate: '',
+    start: '',
+    end: ''
   });
 
   // Modal states
@@ -83,6 +101,7 @@ const WorkersManagement: React.FC = () => {
 
   useEffect(() => {
     loadPositions();
+    loadWorkersKPI();
     searchWorkers();
   }, []);
 
@@ -93,6 +112,17 @@ const WorkersManagement: React.FC = () => {
   const showSuccessMessage = (message: string) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  const loadWorkersKPI = async () => {
+    try {
+      const response = await kpiApi.getWorkersKPI();
+      if (response.success) {
+        setWorkersKPI(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading workers KPI:', error);
+    }
   };
 
   const loadPositions = async () => {
@@ -306,7 +336,7 @@ const WorkersManagement: React.FC = () => {
   };
 
   const clearFilters = () => {
-    setSearchParams({
+    const clearedParams = {
       page: 0,
       size: 20,
       keyword: '',
@@ -315,8 +345,39 @@ const WorkersManagement: React.FC = () => {
       payable: undefined,
       team: '',
       minRate: undefined,
-      maxRate: undefined
+      maxRate: undefined,
+      start: '',
+      end: ''
+    };
+    setSearchParams(clearedParams);
+    setTempFilters({
+      keyword: '',
+      status: '',
+      payFrequency: '',
+      payable: '',
+      team: '',
+      minRate: '',
+      maxRate: '',
+      start: '',
+      end: ''
     });
+  };
+
+  const applyFilters = () => {
+    setSearchParams(prev => ({
+      ...prev,
+      page: 0,
+      keyword: tempFilters.keyword,
+      status: tempFilters.status as 'ACTIVE' | 'INACTIVE' | undefined || undefined,
+      payFrequency: tempFilters.payFrequency as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined || undefined,
+      payable: tempFilters.payable === '' ? undefined : tempFilters.payable === 'true',
+      team: tempFilters.team,
+      minRate: tempFilters.minRate ? Number(tempFilters.minRate) : undefined,
+      maxRate: tempFilters.maxRate ? Number(tempFilters.maxRate) : undefined,
+      start: tempFilters.start || '',
+      end: tempFilters.end || ''
+    }));
+    handleSearch();
   };
 
   const getPageNumbers = () => {
@@ -379,6 +440,39 @@ const WorkersManagement: React.FC = () => {
         </button>
       </div>
 
+      {/* Workers KPI Section */}
+      {workersKPI && (
+        <div className="row g-4 mb-4">
+          <KPICard
+            title="Total Workers"
+            value={workersKPI.totalWorkers}
+            icon={Users}
+            color="primary"
+          />
+          <KPICard
+            title="Active Workers"
+            value={workersKPI.activeWorkers}
+            subtitle={`${workersKPI.inactiveWorkers} inactive`}
+            icon={UserCheck}
+            color="success"
+          />
+          <KPICard
+            title="Payable Workers"
+            value={workersKPI.payableWorkers}
+            subtitle={`${((workersKPI.payableWorkers / workersKPI.totalWorkers) * 100).toFixed(1)}% of total`}
+            icon={DollarSign}
+            color="info"
+          />
+          <KPICard
+            title="KYC Gaps"
+            value={workersKPI.kycGaps}
+            subtitle={`${workersKPI.phoneValidPct.toFixed(1)}% phone valid`}
+            icon={Phone}
+            color={workersKPI.kycGaps > 0 ? "warning" : "success"}
+          />
+        </div>
+      )}
+
       {/* Success Message */}
       {successMessage && (
         <div className="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
@@ -408,9 +502,19 @@ const WorkersManagement: React.FC = () => {
 
       {/* Search and Filters */}
       <div className="card mb-4">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h6 className="mb-0">Search & Filter Workers</h6>
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => setFilterCollapsed(!filterCollapsed)}
+          >
+            {filterCollapsed ? 'Show Advanced Filters' : 'Hide Advanced Filters'}
+          </button>
+        </div>
         <div className="card-body">
-          <div className="row g-3">
-            <div className="col-md-4">
+          {/* Basic Search */}
+          <div className="row g-3 mb-3">
+            <div className="col-md-6">
               <div className="input-group">
                 <span className="input-group-text">
                   <Search size={16} />
@@ -419,70 +523,31 @@ const WorkersManagement: React.FC = () => {
                   type="text"
                   className="form-control"
                   placeholder="Search by name, email, phone..."
-                  value={searchParams.keyword || ''}
-                  onChange={(e) => setSearchParams(prev => ({ ...prev, keyword: e.target.value }))}
+                  value={tempFilters.keyword}
+                  onChange={(e) => setTempFilters(prev => ({ ...prev, keyword: e.target.value }))}
                 />
               </div>
             </div>
-
-            <div className="col-md-2">
+            <div className="col-md-3">
               <select
-                title='Status'
                 className="form-select"
-                value={searchParams.status || ''}
-                onChange={(e) => setSearchParams(prev => ({
-                  ...prev,
-                  status: e.target.value as 'ACTIVE' | 'INACTIVE' | undefined || undefined
-                }))}
+                value={tempFilters.status}
+                onChange={(e) => setTempFilters(prev => ({ ...prev, status: e.target.value }))}
               >
                 <option value="">All Status</option>
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="INACTIVE">INACTIVE</option>
               </select>
             </div>
-
-            <div className="col-md-2">
-              <select
-                title='Pay Frequency'
-                className="form-select"
-                value={searchParams.payFrequency || ''}
-                onChange={(e) => setSearchParams(prev => ({
-                  ...prev,
-                  payFrequency: e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined || undefined
-                }))}
-              >
-                <option value="">All Frequency</option>
-                <option value="DAILY">DAILY</option>
-                <option value="WEEKLY">WEEKLY</option>
-                <option value="MONTHLY">MONTHLY</option>
-              </select>
-            </div>
-
-            <div className="col-md-2">
-              <select
-                title='Payable'
-                className="form-select"
-                value={searchParams.payable === undefined ? '' : searchParams.payable.toString()}
-                onChange={(e) => setSearchParams(prev => ({
-                  ...prev,
-                  payable: e.target.value === '' ? undefined : e.target.value === 'true'
-                }))}
-              >
-                <option value="">All Payable</option>
-                <option value="true">Payable</option>
-                <option value="false">Not Payable</option>
-              </select>
-            </div>
-
-            <div className="col-md-2">
+            <div className="col-md-3">
               <div className="d-flex gap-2">
                 <button
-                  title='Search'
-                  className="btn btn-outline-primary"
-                  onClick={handleSearch}
+                  className="btn btn-primary"
+                  onClick={applyFilters}
                   disabled={loading}
                 >
-                  <Search size={16} />
+                  <Search size={16} className="me-1" />
+                  Search
                 </button>
                 <button
                   className="btn btn-outline-secondary"
@@ -495,54 +560,102 @@ const WorkersManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="row g-3 mt-2">
-            <div className="col-md-3">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Team"
-                value={searchParams.team || ''}
-                onChange={(e) => setSearchParams(prev => ({ ...prev, team: e.target.value }))}
-              />
+          {/* Advanced Filters - Collapsible */}
+          {!filterCollapsed && (
+            <div className="border-top pt-3">
+              <div className="row g-3 mb-3">
+                <div className="col-md-3">
+                  <label className="form-label small">Pay Frequency</label>
+                  <select
+                    className="form-select"
+                    value={tempFilters.payFrequency}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, payFrequency: e.target.value }))}
+                  >
+                    <option value="">All Frequencies</option>
+                    <option value="DAILY">DAILY</option>
+                    <option value="WEEKLY">WEEKLY</option>
+                    <option value="MONTHLY">MONTHLY</option>
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">Payable Status</label>
+                  <select
+                    className="form-select"
+                    value={tempFilters.payable}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, payable: e.target.value }))}
+                  >
+                    <option value="">All Workers</option>
+                    <option value="true">Payable</option>
+                    <option value="false">Not Payable</option>
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">Team</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Team name"
+                    value={tempFilters.team}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, team: e.target.value }))}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">Items per page</label>
+                  <select
+                    className="form-select"
+                    value={searchParams.size}
+                    onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                    <option value={100}>100 per page</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="row g-3 mb-3">
+                <div className="col-md-3">
+                  <label className="form-label small">Min Rate</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    placeholder="Minimum rate"
+                    value={tempFilters.minRate}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, minRate: e.target.value }))}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">Max Rate</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    placeholder="Maximum rate"
+                    value={tempFilters.maxRate}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, maxRate: e.target.value }))}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">Start Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={tempFilters.start}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, start: e.target.value }))}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label className="form-label small">End Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={tempFilters.end}
+                    onChange={(e) => setTempFilters(prev => ({ ...prev, end: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="col-md-3">
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Min Rate"
-                value={searchParams.minRate || ''}
-                onChange={(e) => setSearchParams(prev => ({
-                  ...prev,
-                  minRate: e.target.value ? Number(e.target.value) : undefined
-                }))}
-              />
-            </div>
-            <div className="col-md-3">
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Max Rate"
-                value={searchParams.maxRate || ''}
-                onChange={(e) => setSearchParams(prev => ({
-                  ...prev,
-                  maxRate: e.target.value ? Number(e.target.value) : undefined
-                }))}
-              />
-            </div>
-            <div className="col-md-3">
-              <select
-              title='Workers per page'
-                className="form-select"
-                value={searchParams.size}
-                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              >
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
