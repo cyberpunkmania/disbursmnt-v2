@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from './DashboardLayout';
 import { disbursementsApi } from '../services/api';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import KPICard from './KPICard';
+import { exportToExcel } from '../utils/excelExport';
+import { ChevronLeft, ChevronRight, DollarSign, Users, CheckCircle, AlertCircle, FileSpreadsheet } from 'lucide-react';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -56,6 +58,54 @@ const PayoutsPage: React.FC = () => {
     );
   }, [payoutsData, searchQuery]);
 
+  // Calculate KPIs from current payouts data
+  const calculateKPIs = () => {
+    if (!payoutsData?.content) {
+      return {
+        totalPayouts: 0,
+        totalAmount: 0,
+        successfulPayouts: 0,
+        failedPayouts: 0,
+        successRate: 0
+      };
+    }
+
+    const payouts = payoutsData.content;
+    const totalPayouts = payouts.length;
+    const totalAmount = payouts.reduce((sum: number, payout: any) => sum + payout.amount, 0);
+    const successfulPayouts = payouts.filter((p: any) => p.state === 'SENT' || p.state === 'COMPLETED').length;
+    const failedPayouts = payouts.filter((p: any) => p.state === 'FAILED').length;
+    const successRate = totalPayouts > 0 ? (successfulPayouts / totalPayouts) * 100 : 0;
+
+    return {
+      totalPayouts,
+      totalAmount,
+      successfulPayouts,
+      failedPayouts,
+      successRate
+    };
+  };
+
+  const handleExportToExcel = () => {
+    if (!payoutsData?.content || payoutsData.content.length === 0) return;
+
+    const data = payoutsData.content.map((payout: any) => ({
+      'Worker Name': payout.workerName,
+      'Worker Phone': payout.workerPhone,
+      'Amount': payout.amount,
+      'Status': payout.state,
+      'MPESA Receipt': payout.mpesaReceipt || '',
+      'Created At': formatDate(payout.createdAt),
+      'Sent At': payout.sentAt ? formatDate(payout.sentAt) : ''
+    }));
+
+    exportToExcel({
+      data,
+      filename: 'payouts',
+      sheetName: 'Payouts'
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="container-fluid p-4">
@@ -64,11 +114,58 @@ const PayoutsPage: React.FC = () => {
             <h2 className="h3 mb-1">Payouts</h2>
             <p className="text-muted mb-0">View and search all payouts</p>
           </div>
+          <div className="col-auto">
+            <button
+              className="btn btn-outline-success d-flex align-items-center"
+              onClick={handleExportToExcel}
+              disabled={!payoutsData?.content || payoutsData.content.length === 0}
+            >
+              <FileSpreadsheet size={16} className="me-1" />
+              Export Excel
+            </button>
+          </div>
         </div>
+
+        {/* KPI Cards */}
+        {payoutsData?.content && (() => {
+          const kpis = calculateKPIs();
+          return (
+            <div className="row g-4 mb-4">
+              <KPICard
+                title="Total Payouts"
+                value={kpis.totalPayouts}
+                icon={Users}
+                color="primary"
+              />
+              <KPICard
+                title="Total Amount"
+                value={`KES ${kpis.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                color="success"
+              />
+              <KPICard
+                title="Successful Payouts"
+                value={kpis.successfulPayouts}
+                subtitle={`${kpis.successRate.toFixed(1)}% success rate`}
+                icon={CheckCircle}
+                color="info"
+              />
+              <KPICard
+                title="Failed Payouts"
+                value={kpis.failedPayouts}
+                subtitle={`${(100 - kpis.successRate).toFixed(1)}% failure rate`}
+                icon={AlertCircle}
+                color="warning"
+              />
+            </div>
+          );
+        })()}
         {error && (
           <div className="alert alert-danger alert-dismissible fade show" role="alert">
             {error}
-            <button type="button" className="btn-close" onClick={() => setError(null)} />
+            <button 
+             aria-label="Close"
+             type="button" className="btn-close" onClick={() => setError(null)} />
           </div>
         )}
         <div className="card mb-4">
@@ -89,6 +186,7 @@ const PayoutsPage: React.FC = () => {
               <div className="d-flex align-items-center ms-3">
                 <label className="me-2 mb-0">Page Size:</label>
                 <select
+                  aria-label="Page size"
                   className="form-select form-select-sm w-auto"
                   value={size}
                   onChange={e => {
@@ -164,6 +262,7 @@ const PayoutsPage: React.FC = () => {
                   <ul className="pagination mb-0">
                     <li className={`page-item ${page === 0 ? 'disabled' : ''}`}>
                       <button
+                        aria-label="Previous"
                         className="page-link"
                         onClick={() => setPage(page - 1)}
                         disabled={page === 0}
@@ -186,6 +285,7 @@ const PayoutsPage: React.FC = () => {
                     })}
                     <li className={`page-item ${page === payoutsData.totalPages - 1 ? 'disabled' : ''}`}>
                       <button
+                        aria-label="Next"
                         className="page-link"
                         onClick={() => setPage(page + 1)}
                         disabled={page === payoutsData.totalPages - 1}

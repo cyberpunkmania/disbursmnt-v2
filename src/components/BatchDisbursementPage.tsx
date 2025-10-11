@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from './DashboardLayout';
 import { disbursementsApi } from '../services/api';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import KPICard from './KPICard';
+import { exportToExcel } from '../utils/excelExport';
+import { ChevronLeft, ChevronRight, DollarSign, Users, Package, TrendingUp, FileSpreadsheet } from 'lucide-react';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -57,6 +59,48 @@ const BatchDisbursementPage: React.FC = () => {
 //   const draftOnly = batches.filter((b: any) => b.status === 'DRAFT');
  const draftOnly = batches;
 
+  // Calculate KPIs from current batches data
+  const calculateKPIs = () => {
+    const totalBatches = batches.length;
+    const totalAmount = batches.reduce((sum, batch) => sum + (batch.amountTotal || 0), 0);
+    const totalPayouts = batches.reduce((sum, batch) => sum + (batch.payoutCount || 0), 0);
+    const draftBatches = batches.filter(b => b.status === 'DRAFT').length;
+    const sentBatches = batches.filter(b => b.status === 'SENT').length;
+    const completedBatches = batches.filter(b => b.status === 'COMPLETED').length;
+    const averageAmount = totalBatches > 0 ? totalAmount / totalBatches : 0;
+
+    return {
+      totalBatches,
+      totalAmount,
+      totalPayouts,
+      draftBatches,
+      sentBatches,
+      completedBatches,
+      averageAmount
+    };
+  };
+
+  const handleExportToExcel = () => {
+    if (batches.length === 0) return;
+
+    const data = batches.map(batch => ({
+      'Source Type': batch.sourceType,
+      'Source Ref': batch.sourceRef,
+      'Status': batch.status,
+      'Payout Count': batch.payoutCount,
+      'Amount Total': batch.amountTotal,
+      'Payroll Label': batch.payrollLabel || '',
+      'Created At': new Date(batch.createdAt).toLocaleDateString(),
+      'Updated At': new Date(batch.updatedAt).toLocaleDateString()
+    }));
+
+    exportToExcel({
+      data,
+      filename: 'disbursement-batches',
+      sheetName: 'Batches'
+    });
+  };
+
   const doSend = async (uuid: string) => {
     setSending(true);
     setSuccessMessage(null);
@@ -100,7 +144,53 @@ const BatchDisbursementPage: React.FC = () => {
             <h2 className="h3 mb-1">Batch Disbursements</h2>
             <p className="text-muted mb-0">Manage and send batch disbursements</p>
           </div>
+          <div className="col-auto">
+            <button
+              className="btn btn-outline-success d-flex align-items-center"
+              onClick={handleExportToExcel}
+              disabled={batches.length === 0}
+            >
+              <FileSpreadsheet size={16} className="me-1" />
+              Export Excel
+            </button>
+          </div>
         </div>
+
+        {/* KPI Cards */}
+        {batches.length > 0 && (() => {
+          const kpis = calculateKPIs();
+          return (
+            <div className="row g-4 mb-4">
+              <KPICard
+                title="Total Batches"
+                value={kpis.totalBatches}
+                subtitle={`${kpis.draftBatches} draft, ${kpis.sentBatches} sent`}
+                icon={Package}
+                color="primary"
+              />
+              <KPICard
+                title="Total Amount"
+                value={`KES ${kpis.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                subtitle={`Avg: KES ${kpis.averageAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                color="success"
+              />
+              <KPICard
+                title="Total Payouts"
+                value={kpis.totalPayouts}
+                icon={Users}
+                color="info"
+              />
+              <KPICard
+                title="Completed Batches"
+                value={kpis.completedBatches}
+                subtitle={`${kpis.totalBatches > 0 ? ((kpis.completedBatches / kpis.totalBatches) * 100).toFixed(1) : 0}% completion rate`}
+                icon={TrendingUp}
+                color="warning"
+              />
+            </div>
+          );
+        })()}
         {error && (
           <div className="alert alert-danger alert-dismissible fade show" role="alert">
             {error}
@@ -219,6 +309,7 @@ const BatchDisbursementPage: React.FC = () => {
                   <ul className="pagination mb-0">
                     <li className={`page-item ${page === 0 ? 'disabled' : ''}`}>
                       <button
+                        aria-label="Previous"
                         className="page-link"
                         onClick={() => handlePageChange(page - 1)}
                         disabled={page === 0}
