@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 import { kpiApi } from '../services/api';
 import KPICard from './KPICard';
 import type { WorkersKPI, PayoutsKPI, PayItemsKPI, PayPeriodsKPI } from '../types';
@@ -17,11 +18,19 @@ import {
   Package,
   FileText,
   Banknote,
-  UserCheck
+  UserCheck,
+  UserPlus,
+  Briefcase,
+  Activity,
+  Wifi,
+  Database,
+  Shield,
+  HardDrive
 } from 'lucide-react';
 
 const DashboardContent: React.FC = () => {
   const { isDarkMode } = useTheme();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [kpiData, setKpiData] = useState<{
@@ -35,6 +44,105 @@ const DashboardContent: React.FC = () => {
     payItems: null,
     payPeriods: null
   });
+
+  // Sample activity data - in real app, this would come from API
+  const recentActivity = [
+    {
+      id: 1,
+      type: 'worker_added',
+      title: 'New worker added',
+      description: 'Jane Doe added to Site A team',
+      time: '2 hours ago',
+      icon: UserPlus,
+      color: 'success'
+    },
+    {
+      id: 2,
+      type: 'payroll_processed',
+      title: 'Payroll processed',
+      description: 'Weekly payroll for 150 workers',
+      time: '4 hours ago',
+      icon: DollarSign,
+      color: 'primary'
+    },
+    {
+      id: 3,
+      type: 'disbursement_sent',
+      title: 'Disbursement sent',
+      description: 'KES 45,000 sent via M-Pesa',
+      time: '6 hours ago',
+      icon: Banknote,
+      color: 'success'
+    },
+    {
+      id: 4,
+      type: 'position_updated',
+      title: 'Position updated',
+      description: 'Supervisor role modified',
+      time: '1 day ago',
+      icon: Briefcase,
+      color: 'warning'
+    }
+  ];
+
+  // Sample system status data - in real app, this would come from API
+  const systemStatus = [
+    {
+      id: 1,
+      name: 'API Status',
+      status: 'operational',
+      icon: Wifi,
+      color: 'success'
+    },
+    {
+      id: 2,
+      name: 'M-Pesa Integration',
+      status: 'connected',
+      icon: Shield,
+      color: 'success'
+    },
+    {
+      id: 3,
+      name: 'Database',
+      status: 'healthy',
+      icon: Database,
+      color: 'success'
+    },
+    {
+      id: 4,
+      name: 'Last Backup',
+      status: '2 hours ago',
+      icon: HardDrive,
+      color: 'warning'
+    }
+  ];
+
+  const quickActions = [
+    {
+      icon: UserPlus,
+      label: 'Add New Worker',
+      path: '/workers',
+      color: 'primary'
+    },
+    {
+      icon: Calendar,
+      label: 'Create Pay Period',
+      path: '/payroll',
+      color: 'success'
+    },
+    {
+      icon: DollarSign,
+      label: 'Process Disbursement',
+      path: '/disbursements',
+      color: 'warning'
+    },
+    {
+      icon: Briefcase,
+      label: 'Manage Positions',
+      path: '/positions',
+      color: 'info'
+    }
+  ];
 
   useEffect(() => {
     loadKPIData();
@@ -145,6 +253,151 @@ const DashboardContent: React.FC = () => {
               <TrendingUp size={16} className="me-1" />
               Refresh
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Row: Quick Actions, Recent Activity, System Status */}
+      <div className="row g-4 mb-4">
+        {/* Quick Actions */}
+        <div className="col-12 col-lg-4">
+          <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+            <div className="card-header">
+              <h6 className="mb-0 fw-bold">Quick Actions</h6>
+            </div>
+            <div className="card-body">
+              <div className="d-grid gap-2">
+                {quickActions.map((action, index) => (
+                  <button
+                    key={index}
+                    className={`btn btn-outline-${action.color} btn-sm d-flex align-items-center justify-content-start`}
+                    onClick={() => navigate(action.path)}
+                  >
+                    <action.icon size={16} className="me-2" />
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="col-12 col-lg-4">
+          <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h6 className="mb-0 fw-bold">Recent Activity</h6>
+              <Activity size={16} className="text-muted" />
+            </div>
+            <div className="card-body p-0">
+              <div className="list-group list-group-flush">
+                {recentActivity.map((activity) => (
+                  <div key={activity.id} className={`list-group-item ${isDarkMode ? 'bg-dark border-secondary' : ''} d-flex align-items-start`}>
+                    <div className={`me-3 mt-1 p-1 rounded-circle bg-${activity.color} bg-opacity-10`}>
+                      <activity.icon size={14} className={`text-${activity.color}`} />
+                    </div>
+                    <div className="flex-grow-1 min-w-0">
+                      <h6 className="mb-1 fs-6">{activity.title}</h6>
+                      <p className="mb-1 text-muted small">{activity.description}</p>
+                      <small className="text-muted">{activity.time}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* System Status */}
+        <div className="col-12 col-lg-4">
+          <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''}`}>
+            <div className="card-header">
+              <h6 className="mb-0 fw-bold">System Status</h6>
+            </div>
+            <div className="card-body">
+              <div className="d-grid gap-3">
+                {systemStatus.map((status) => (
+                  <div key={status.id} className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center">
+                      <status.icon size={16} className={`text-${status.color} me-2`} />
+                      <span className="small">{status.name}</span>
+                    </div>
+                    <span className={`badge bg-${status.color} bg-opacity-10 text-${status.color} border border-${status.color} border-opacity-25`}>
+                      {status.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Management Modules */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <h5 className={`mb-3 ${isDarkMode ? 'text-white' : 'text-dark'}`}>Management Modules</h5>
+          <div className="row g-4">
+            <div className="col-12 col-sm-6 col-lg-3">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
+                <div className="card-body">
+                  <Users className="text-primary mb-3" size={48} />
+                  <h6 className="card-title">Workers Management</h6>
+                  <p className="card-text text-muted small">Manage worker profiles, rates, and status</p>
+                  <button 
+                    className="btn btn-outline-primary btn-sm"
+                    onClick={() => navigate('/workers')}
+                  >
+                    View Workers
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-sm-6 col-lg-3">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
+                <div className="card-body">
+                  <Briefcase className="text-success mb-3" size={48} />
+                  <h6 className="card-title">Positions</h6>
+                  <p className="card-text text-muted small">Define and manage job positions</p>
+                  <button 
+                    className="btn btn-outline-success btn-sm"
+                    onClick={() => navigate('/positions')}
+                  >
+                    Manage Positions
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-sm-6 col-lg-3">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
+                <div className="card-body">
+                  <Calendar className="text-info mb-3" size={48} />
+                  <h6 className="card-title">Payroll</h6>
+                  <p className="card-text text-muted small">Create pay periods and generate payroll</p>
+                  <button 
+                    className="btn btn-outline-info btn-sm"
+                    onClick={() => navigate('/payroll')}
+                  >
+                    Process Payroll
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="col-12 col-sm-6 col-lg-3">
+              <div className={`card h-100 ${isDarkMode ? 'bg-dark border-secondary' : ''} text-center`}>
+                <div className="card-body">
+                  <DollarSign className="text-warning mb-3" size={48} />
+                  <h6 className="card-title">Disbursements</h6>
+                  <p className="card-text text-muted small">Process and track payment disbursements</p>
+                  <button 
+                    className="btn btn-outline-warning btn-sm"
+                    onClick={() => navigate('/disbursements')}
+                  >
+                    View Disbursements
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

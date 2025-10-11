@@ -48,6 +48,40 @@ body {
     border: none;
   }
   
+  /* Dashboard quick actions responsive */
+  .d-grid.gap-2 .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem;
+  }
+  
+  /* Activity list adjustments */
+  .list-group-item {
+    padding: 0.75rem 1rem;
+  }
+  
+  .list-group-item .min-w-0 h6 {
+    font-size: 0.875rem;
+  }
+  
+  /* Management modules grid */
+  .row.g-4 {
+    gap: 1rem !important;
+  }
+  
+  /* Header adjustments */
+  header h4 {
+    font-size: 1.25rem;
+  }
+  
+  /* Card adjustments */
+  .card {
+    margin-bottom: 1rem;
+  }
+  
+  .card-header h6 {
+    font-size: 0.875rem;
+  }
+  
   .btn-group .btn {
     font-size: 0.875rem;
   }
@@ -168,19 +202,41 @@ body {
     left: -250px;
     z-index: 1050;
     transition: left 0.3s ease;
+    width: 250px !important; /* Force full width on mobile for better usability */
   }
   
   .sidebar.show {
     left: 0;
   }
   
+  .sidebar.d-none {
+    display: none !important;
+  }
+  
+  /* On mobile, make sidebar always full width when shown */
   .sidebar-collapsed {
-    left: -70px;
+    width: 250px !important;
+    left: -250px;
   }
   
   .sidebar-collapsed.show {
     left: 0;
-    width: 70px;
+    width: 250px !important;
+  }
+  
+  /* Mobile menu button in header */
+  .btn-mobile-menu {
+    border: 1px solid #dee2e6;
+    background: transparent;
+  }
+  
+  /* Ensure sidebar items are always visible on mobile */
+  .sidebar .sidebar-item span {
+    display: inline !important;
+  }
+  
+  .sidebar .sidebar-item {
+    justify-content: flex-start !important;
   }
 }
 

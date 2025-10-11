@@ -31,7 +31,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
       if (window.innerWidth <= 768) {
-        setSidebarCollapsed(true);
+        setSidebarCollapsed(false); // Don't auto-collapse on mobile - let user choose
       }
     };
 
@@ -68,7 +68,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       )}
 
       {/* Sidebar */}
-      <div className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${isMobile && showMobileSidebar ? 'show' : ''} ${isDarkMode ? 'bg-dark text-white' : 'bg-light text-dark border-end'}`}>
+      <div className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${isMobile && showMobileSidebar ? 'show' : ''} ${isMobile && !showMobileSidebar ? 'd-none' : ''} ${isDarkMode ? 'bg-dark text-white' : 'bg-light text-dark border-end'}`}>
         <div className={`d-flex align-items-center justify-content-between p-3 border-bottom ${isDarkMode ? 'border-secondary' : 'border-light-subtle'}`}>
           {!sidebarCollapsed && (
             <h5 className="mb-0 fw-bold">Fund System</h5>
@@ -78,7 +78,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
             onClick={toggleSidebar}
             title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isMobile ? (
+              showMobileSidebar ? <ChevronLeft size={16} /> : <Menu size={16} />
+            ) : (
+              sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />
+            )}
           </button>
         </div>
         
@@ -172,14 +176,16 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <header className={`shadow-sm border-bottom p-3 ${isDarkMode ? 'bg-dark text-white' : 'bg-white text-dark'}`}>
           <div className="d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center">
-              <button 
-                className="btn btn-outline-secondary me-3 d-md-none"
-                onClick={toggleSidebar}
-                title="Toggle sidebar"
-              >
-                <Menu size={18} />
-              </button>
-              <h4 className="mb-0 fw-semibold text-dark">Dashboard</h4>
+              {isMobile && (
+                <button 
+                  className={`btn btn-outline-secondary me-3 ${isDarkMode ? 'btn-outline-light' : 'btn-outline-secondary'}`}
+                  onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+                  title="Toggle sidebar"
+                >
+                  <Menu size={18} />
+                </button>
+              )}
+              <h4 className={`mb-0 fw-semibold ${isDarkMode ? 'text-white' : 'text-dark'}`}>Dashboard</h4>
             </div>
             
             <div className="d-flex align-items-center gap-3">
